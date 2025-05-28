@@ -36,7 +36,7 @@ helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: ["https://neigborr-frontend-1-divyang-swiftruts-projects.vercel.app", "http://localhost:3030", "http://localhost:5173"],
+  origin: ["*"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: true,
 }));
@@ -101,7 +101,7 @@ const PORT = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["https://neigborr-frontend-1-divyang-swiftruts-projects.vercel.app", "http://localhost:3030", "http://localhost:5173"],
+    origin: ["*"],
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["my-custom-header"],
