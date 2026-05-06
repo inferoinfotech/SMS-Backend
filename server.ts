@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 require("dotenv").config();
 const authRouter = require("./routes/auth.router");
 const societyRouter = require("./routes/society.router");
+const residentRouter = require("./routes/resident.router");
 const logger = require("./config/logger");
 const pinoHttp = require("pino-http")({ logger });
 const errorHandler = require("./middleware/error.middleware");
@@ -26,6 +27,7 @@ connectDB();
 
 app.use("/api/auth", authRouter);
 app.use("/api/society", societyRouter);
+app.use("/api/resident", residentRouter);
 
 // Error handler middleware should be last
 app.use(errorHandler);

@@ -60,10 +60,10 @@ const signup = async (req: any, res: any) => {
       privacyPolicy,
     });
     await newUser.save();
-    res.status(201).json({ message: "User created successfully" });
+    res.status(201).json({ success: true, message: "User created successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: `${error} + Internal server error` });
+    res.status(500).json({ success: false, message: `${error} + Internal server error` });
   }
 };
 
@@ -97,7 +97,7 @@ const login = async (req: any, res: any) => {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
       maxAge: 1000 * 60 * 60,
-      sameSite: "strict",
+      sameSite: "lax",
     });
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
@@ -248,8 +248,11 @@ const resetPassword = async (req: any, res: any) => {
 
 const getProfile = async (req: any, res: any) => {
   try {
-    const user = await Auth.findById(req.user.id);
-    res.status(200).json(user);
+    const user = await Auth.findById(req.user.id).select("-password -confirmPassword -resetOtp -otpExpires -__v");
+    res.status(200).json({
+      message: "User profile fetched successfully",
+      user,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });

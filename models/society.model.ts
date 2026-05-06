@@ -31,6 +31,9 @@ const societySchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  
 });
+
+societySchema.index({ societyName: 1 }, { unique: true });
 
 module.exports = mongoose.model("Society", societySchema);
