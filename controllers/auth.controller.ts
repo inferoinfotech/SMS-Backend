@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const logger = require("../config/logger");
 const sendOtpMail = require("../utils/nodemailer/sendOtpMail");
+const fs = require("fs");
+const path = require("path");
 
 const signup = async (req: any, res: any) => {
   try {
@@ -143,15 +145,17 @@ const forgetPassword = async (req: any, res: any) => {
 
     await user.save();
 
-    // TODO: send OTP via email/SMS
-    await sendOtpMail(email, otp);
+    console.log(otp, "otp");
+
+    // Send OTP via email
+    await sendOtpMail(user.email, otp);
+
     res.status(200).json({
-      message: "OTP sent successfully"
-     
+      message: "OTP sent successfully to your registered email",
     });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" + error });
   }
 };
 const verifyOtp = async (req: any, res: any) => {
@@ -252,6 +256,48 @@ const getProfile = async (req: any, res: any) => {
   }
 };
 
+const editProfile = async (req: any, res: any) => {
+  try {
+    const user = await Auth.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (req.body.firstname !== undefined) user.firstname = req.body.firstname;
+    if (req.body.lastname !== undefined) user.lastname = req.body.lastname;
+    if (req.body.email !== undefined) user.email = req.body.email;
+    if (req.body.phoneNumber !== undefined)
+      user.phoneNumber = req.body.phoneNumber;
+    if (req.body.country !== undefined) user.country = req.body.country;
+    if (req.body.city !== undefined) user.city = req.body.city;
+    if (req.body.state !== undefined) user.state = req.body.state;
+    if (req.body.selectSociety !== undefined)
+      user.selectSociety = req.body.selectSociety;
+
+    if (req.file) {
+      // Delete old photo if it exists
+      if (user.profileImage) {
+        const oldImagePath = path.join(__dirname, "..", user.profileImage);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+      user.profileImage = `uploads/${req.file.filename}`;
+    }
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      message: "User updated successfully",
+      updatedUser,
+    });
+  } catch (error) {
+    console.error("Edit profile error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -260,4 +306,5 @@ module.exports = {
   resetPassword,
   getProfile,
   verifyOtp,
+  editProfile,
 };

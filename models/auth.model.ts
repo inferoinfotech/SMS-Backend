@@ -67,6 +67,10 @@ const authSchema = new mongoose.Schema({
     enum: ["admin", "owner", "guard"],
     default: "admin",
   },
+  profileImage: {
+    type: String,
+    default: "",
+  },
 });
 
 module.exports = mongoose.model("Auth", authSchema);
