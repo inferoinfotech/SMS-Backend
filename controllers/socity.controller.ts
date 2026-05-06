@@ -36,10 +36,11 @@ const createSociety = async (req: any, res: any) => {
       zipCode,
     });
     await newSociety.save();
+    console.log(newSociety,"newsociety")
     res.status(201).json({ message: "Society created successfully" });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error });
   }
 };
 
@@ -47,10 +48,11 @@ const createSociety = async (req: any, res: any) => {
 const getAllSocieties = async (req: any, res: any) => {
   try {
     const societies = await Society.find();
+    console.log(societies,"societies")
     res.status(200).json(societies);
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error });
   }
 };
 
