@@ -1,4 +1,5 @@
 const Auth = require("../models/auth.model");
+const SecurityGuard = require("../models/securityGuard.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const logger = require("../config/logger");
@@ -77,20 +78,39 @@ const login = async (req: any, res: any) => {
         message: "Email or phone number and password are required",
       });
     }
-    const user = await Auth.findOne({
+
+    let user = await Auth.findOne({
       $or: [
         email ? { email } : null,
         phoneNumber ? { phoneNumber } : null,
       ].filter(Boolean),
     });
+
+    let userType = "admin";
+
+    if (!user) {
+      user = await SecurityGuard.findOne({
+        $or: [
+          email ? { email } : null,
+          phoneNumber ? { phoneNumber } : null,
+        ].filter(Boolean),
+      });
+      userType = "security";
+    }
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    if (!user.password) {
+      return res.status(400).json({ message: "Password not set. Please check your email for the setup link." });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id, role: userType }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
     res.cookie("token", token, {
@@ -99,7 +119,7 @@ const login = async (req: any, res: any) => {
       maxAge: 1000 * 60 * 60,
       sameSite: "lax",
     });
-    res.status(200).json({ message: "Login successful", token });
+    res.status(200).json({ message: "Login successful", token, role: userType });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: `${error} + Internal server error` });
