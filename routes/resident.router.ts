@@ -8,6 +8,7 @@ const {
 } = require("../controllers/resident.controller");
 const protect = require("../middleware/auth.middleware");
 
+
 const router = express.Router();
 
 router.post("/create", protect, createResident);

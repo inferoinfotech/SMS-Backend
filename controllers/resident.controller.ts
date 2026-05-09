@@ -132,34 +132,16 @@ const createResident = async (req: any, res: any) => {
 const editStatusResident = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const {
-      name,
-      email,
-      age,
-      gender,
-      wing,
-      unit,
-      phoneNumber,
-      address,
-      profileImage,
-      relation,
-      uploadAadharfront,
-      uploadAadharback,
-      uploadPan,
-      addressProof,
-      rentAgreeMent,
-      members,
-      memberCount,
-      vehicles,
-      residentStatus,
-      unitStatus,
-      society,
-    } = req.body;
+    
+    // We don't strictly need wing/unit/society in the body because we are finding by ID,
+    // but we can keep the validation if you want to ensure the frontend is sending them.
+    const { wing, unit, society } = req.body;
     if (!wing || !unit || !society) {
       return res
         .status(400)
-        .json({ message: "wing, unit and society are required" });
+        .json({ message: "Wing, unit and society are required to confirm vacancy" });
     }
+
     const resident = await Auth.findByIdAndUpdate(
       id,
       {
@@ -167,10 +149,12 @@ const editStatusResident = async (req: any, res: any) => {
         name: "",
         firstname: "",
         lastname: "",
-        email: undefined,
+        email: "", // Clear email
+        password: "", // Clear password for next resident
+        phoneNumber: "", // Clear phone
+        address: "", // Clear address
         age: undefined,
         gender: undefined,
-        phoneNumber: undefined,
         profileImage: "",
         relation: "",
         uploadAadharfront: "",
@@ -186,8 +170,12 @@ const editStatusResident = async (req: any, res: any) => {
       { new: true },
     );
 
+    if (!resident) {
+      return res.status(404).json({ message: "Resident record not found" });
+    }
+
     return res.status(200).json({
-      message: "Resident status updated successfully",
+      message: "Unit vacated and resident details cleared successfully",
       data: resident,
     });
   } catch (error: any) {
@@ -357,4 +345,5 @@ module.exports = {
   getAllResidents,
   createPassword,
   editResident,
+  editStatusResident,
 };
