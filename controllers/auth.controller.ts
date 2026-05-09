@@ -1,12 +1,10 @@
 const Auth = require("../models/auth.model");
-const SecurityGuard = require("../models/securityGuard.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const logger = require("../config/logger");
 const sendOtpMail = require("../utils/nodemailer/sendOtpMail");
 const fs = require("fs");
 const path = require("path");
-const Resident = require("../models/resident.model");
 
 const signup = async (req: any, res: any) => {
   try {
@@ -62,10 +60,14 @@ const signup = async (req: any, res: any) => {
       privacyPolicy,
     });
     await newUser.save();
-    res.status(201).json({ success: true, message: "User created successfully" });
+    res
+      .status(201)
+      .json({ success: true, message: "User created successfully" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ success: false, message: `${error} + Internal server error` });
+    res
+      .status(500)
+      .json({ success: false, message: `${error} + Internal server error` });
   }
 };
 
@@ -87,51 +89,39 @@ const login = async (req: any, res: any) => {
       ].filter(Boolean),
     });
 
-    let userType = "admin";
-
-    if (!user) {
-      user = await SecurityGuard.findOne({
-        $or: [
-          email ? { email } : null,
-          phoneNumber ? { phoneNumber } : null,
-        ].filter(Boolean),
-      });
-      userType = "security";
-    }
-
-      if (!user) {
-      user = await Resident.findOne({
-        $or: [
-          email ? { email } : null,
-          phoneNumber ? { phoneNumber } : null,
-        ].filter(Boolean),
-      });
-      userType = "resident";
-    }
-
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     if (!user.password) {
-      return res.status(400).json({ message: "Password not set. Please check your email for the setup link." });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password not set. Please check your email for the setup link.",
+        });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    const token = jwt.sign({ id: user._id, role: userType }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      },
+    );
     res.cookie("token", token, {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
       maxAge: 1000 * 60 * 60,
       sameSite: "lax",
     });
-    res.status(200).json({ message: "Login successful", token, role: userType });
+    res
+      .status(200)
+      .json({ message: "Login successful", token, role: user.role });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: `${error} + Internal server error` });
@@ -284,11 +274,13 @@ const getProfile = async (req: any, res: any) => {
     const { role, id } = req.user;
 
     if (role === "admin") {
-      user = await Auth.findById(id).select("-password -confirmPassword -resetOtp -otpExpires -__v");
-    } else if (role === "security") {
-      user = await SecurityGuard.findById(id).select("-password -__v");
+      user = await Auth.findById(id).select(
+        "-password -confirmPassword -resetOtp -otpExpires -__v",
+      );
+    } else if (role === "guard") {
+      user = await Auth.findById(id).select("-password -__v");
     } else if (role === "resident") {
-      user = await Resident.findById(id).select("-password -__v");
+      user = await Auth.findById(id).select("-password -__v");
     }
 
     if (!user) {
@@ -312,10 +304,10 @@ const editProfile = async (req: any, res: any) => {
 
     if (role === "admin") {
       user = await Auth.findById(req.params.id);
-    } else if (role === "security") {
-      user = await SecurityGuard.findById(req.params.id);
+    } else if (role === "guard") {
+      user = await Auth.findById(req.params.id);
     } else if (role === "resident") {
-      user = await Resident.findById(req.params.id);
+      user = await Auth.findById(req.params.id);
     }
 
     if (!user) {
@@ -327,14 +319,16 @@ const editProfile = async (req: any, res: any) => {
     if (req.body.lastname !== undefined) user.lastname = req.body.lastname;
     if (req.body.name !== undefined) user.name = req.body.name; // Resident uses 'name'
     if (req.body.email !== undefined) user.email = req.body.email;
-    if (req.body.phoneNumber !== undefined) user.phoneNumber = req.body.phoneNumber;
-    
+    if (req.body.phoneNumber !== undefined)
+      user.phoneNumber = req.body.phoneNumber;
+
     // Admin specific fields
     if (role === "admin") {
       if (req.body.country !== undefined) user.country = req.body.country;
       if (req.body.city !== undefined) user.city = req.body.city;
       if (req.body.state !== undefined) user.state = req.body.state;
-      if (req.body.selectSociety !== undefined) user.selectSociety = req.body.selectSociety;
+      if (req.body.selectSociety !== undefined)
+        user.selectSociety = req.body.selectSociety;
     }
 
     if (req.file) {

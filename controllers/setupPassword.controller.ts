@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const SecurityGuard = require("../models/securityGuard.model");
+const Auth = require("../models/auth.model");
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
 
@@ -34,7 +34,7 @@ const setupPassword = async function (req: any, res: any) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
 
-    const security = await SecurityGuard.findByIdAndUpdate(
+    const security = await Auth.findByIdAndUpdate(
       decoded.id,
       {
         password: hashedPassword,

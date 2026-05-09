@@ -1,20 +1,10 @@
 const MaintenanceSetting = require("../models/maintenanceSetup");
 const Maintenance = require("../models/maintenance");
-const Resident = require("../models/resident.model");
 const Auth = require("../models/auth.model");
 const Society = require("../models/society.model");
 
 const maintenanceSetup = async (req: any, res: any) => {
   try {
-    const user = req.user;
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ message: "Password is required" });
-    }
-    if (password !== process.env.ADMIN_PASSWORD) {
-      return res.status(401).json({ message: "Incorrect Password" });
-    }
-
     const {
       maintenanceAmount,
       penaltyAmount,
@@ -40,8 +30,8 @@ const maintenanceSetup = async (req: any, res: any) => {
       society,
     });
 
-    // Create maintenance records for all residents of this particular society
-    const residents = await Resident.find({ society });
+    // Create maintenance records for all residents (users with role 'resident') of this particular society
+    const residents = await Auth.find({ society, role: "resident" });
     
     if (residents.length > 0) {
       const maintenanceRecords = residents.map((resident: any) => ({
@@ -71,6 +61,21 @@ const maintenanceSetup = async (req: any, res: any) => {
     return res.status(500).json({ message: "Internal server error" + error });
   }
 };
+
+const verifyPassword = async (req: any, res: any) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+    if (password !== process.env.ADMIN_PASSWORD) {
+      return res.status(401).json({ message: "Incorrect Password" });
+    }
+    return res.status(200).json({ message: "Password verified successfully" });
+  } catch (error: any) {
+    return res.status(500).json({ message: "Internal server error" + error });
+  }
+};
 const createMaintenance = async (req: any, res: any) => {
   try {
     const {
@@ -87,7 +92,7 @@ const createMaintenance = async (req: any, res: any) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const residentObj = await Resident.findById(resident);
+    const residentObj = await Auth.findOne({ _id: resident, role: "resident" });
     if (!residentObj) {
       return res.status(404).json({ message: "Resident not found" });
     }
@@ -183,4 +188,4 @@ const getMaintenance = async (req: any, res: any) => {
   }
 };
 
-module.exports = { maintenanceSetup, createMaintenance, getMaintenance };
+module.exports = { maintenanceSetup, createMaintenance, getMaintenance ,verifyPassword};

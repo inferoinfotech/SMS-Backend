@@ -1,4 +1,6 @@
 const Income = require("../models/income.model");
+const Auth = require("../models/auth.model");
+const Society = require("../models/society.model");
 
 const addIncome = async (req: any, res: any) => {
   try {
@@ -26,7 +28,7 @@ const editIncome = async (req: any, res: any) => {
   try {
     const id = req.params.id;
     const { title, amount, date, dueDate, description } = req.body;
-   
+
     const income = await Income.findByIdAndUpdate(
       id,
       {
@@ -74,7 +76,29 @@ const deleteIncome = async (req: any, res: any) => {
 
 const getIncome = async (req: any, res: any) => {
   try {
-    const income = await Income.find();
+    const { role, id } = req.user;
+    let query: any = {};
+
+    if (role === "resident") {
+      // Residents only see their own records
+      query = { resident: id };
+    } else if (role === "admin") {
+      const admin = await Auth.findById(id);
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+
+      if (admin.selectSociety && admin.selectSociety.length > 0) {
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      } else {
+        return res.status(200).json({ data: [] });
+      }
+    }
+    const income = await Income.find(query).sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Income fetched successfully",
       data: income,
