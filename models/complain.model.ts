@@ -24,13 +24,13 @@ const ComplainSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["open", "pending", "closed"],
-      default: "open",
+      enum: ["Open", "Pending", "Closed"],
+      default: "Open",
     },
     priority: {
       type: String,
-      enum: ["high", "medium", "low"],
-      default: "medium",
+      enum: ["High", "Medium", "Low"],
+      default: "Medium",
     },
   },
   {

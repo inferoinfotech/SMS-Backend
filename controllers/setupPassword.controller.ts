@@ -33,6 +33,7 @@ const setupPassword = async function (req: any, res: any) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+
     const security = await SecurityGuard.findByIdAndUpdate(
       decoded.id,
       {

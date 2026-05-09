@@ -20,8 +20,12 @@ const MaintenanceSettingSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-   
-    }
+    },
+    society: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Society",
+      required: true,
+    },
   },
   {
     timestamps: true,

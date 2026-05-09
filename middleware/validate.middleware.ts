@@ -9,7 +9,7 @@ const validate = (schema:any ) => (req:any, res:any, next:any) => {
       return res.status(400).json({
         success: false,
         message: error.message,
-        errors: error.errors.map((err:any) => ({
+        errors: (error.errors || error.issues || []).map((err: any) => ({
           path: err.path.join("."),
           message: err.message,
         })),

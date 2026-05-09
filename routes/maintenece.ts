@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    maintenance,
+    createMaintenance,
     maintenanceSetup,
     getMaintenance
 } = require("../controllers/maintenece.controller");
 const protect = require("../middleware/auth.middleware");
 router.post("/maintenance-setup",protect,maintenanceSetup)
-router.post("/",protect,maintenance)
+router.post("/",protect,createMaintenance)
 router.get("/", protect, getMaintenance);
 
 module.exports = router;

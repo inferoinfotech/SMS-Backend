@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const SecurityGuard = require("../models/securityGuard.model");
-const { client } = require("../config/twilio");
 const transporter = require("../utils/nodemailer/transporter");
 require("dotenv").config();
 

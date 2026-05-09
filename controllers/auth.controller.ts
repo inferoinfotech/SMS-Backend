@@ -6,6 +6,7 @@ const logger = require("../config/logger");
 const sendOtpMail = require("../utils/nodemailer/sendOtpMail");
 const fs = require("fs");
 const path = require("path");
+const Resident = require("../models/resident.model");
 
 const signup = async (req: any, res: any) => {
   try {
@@ -97,6 +98,17 @@ const login = async (req: any, res: any) => {
       });
       userType = "security";
     }
+
+      if (!user) {
+      user = await Resident.findOne({
+        $or: [
+          email ? { email } : null,
+          phoneNumber ? { phoneNumber } : null,
+        ].filter(Boolean),
+      });
+      userType = "resident";
+    }
+
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -268,7 +280,21 @@ const resetPassword = async (req: any, res: any) => {
 
 const getProfile = async (req: any, res: any) => {
   try {
-    const user = await Auth.findById(req.user.id).select("-password -confirmPassword -resetOtp -otpExpires -__v");
+    let user;
+    const { role, id } = req.user;
+
+    if (role === "admin") {
+      user = await Auth.findById(id).select("-password -confirmPassword -resetOtp -otpExpires -__v");
+    } else if (role === "security") {
+      user = await SecurityGuard.findById(id).select("-password -__v");
+    } else if (role === "resident") {
+      user = await Resident.findById(id).select("-password -__v");
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     res.status(200).json({
       message: "User profile fetched successfully",
       user,
@@ -281,22 +307,35 @@ const getProfile = async (req: any, res: any) => {
 
 const editProfile = async (req: any, res: any) => {
   try {
-    const user = await Auth.findById(req.params.id);
+    const { role } = req.user;
+    let user;
+
+    if (role === "admin") {
+      user = await Auth.findById(req.params.id);
+    } else if (role === "security") {
+      user = await SecurityGuard.findById(req.params.id);
+    } else if (role === "resident") {
+      user = await Resident.findById(req.params.id);
+    }
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Update common fields
     if (req.body.firstname !== undefined) user.firstname = req.body.firstname;
     if (req.body.lastname !== undefined) user.lastname = req.body.lastname;
+    if (req.body.name !== undefined) user.name = req.body.name; // Resident uses 'name'
     if (req.body.email !== undefined) user.email = req.body.email;
-    if (req.body.phoneNumber !== undefined)
-      user.phoneNumber = req.body.phoneNumber;
-    if (req.body.country !== undefined) user.country = req.body.country;
-    if (req.body.city !== undefined) user.city = req.body.city;
-    if (req.body.state !== undefined) user.state = req.body.state;
-    if (req.body.selectSociety !== undefined)
-      user.selectSociety = req.body.selectSociety;
+    if (req.body.phoneNumber !== undefined) user.phoneNumber = req.body.phoneNumber;
+    
+    // Admin specific fields
+    if (role === "admin") {
+      if (req.body.country !== undefined) user.country = req.body.country;
+      if (req.body.city !== undefined) user.city = req.body.city;
+      if (req.body.state !== undefined) user.state = req.body.state;
+      if (req.body.selectSociety !== undefined) user.selectSociety = req.body.selectSociety;
+    }
 
     if (req.file) {
       // Delete old photo if it exists

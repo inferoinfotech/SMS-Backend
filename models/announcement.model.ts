@@ -7,7 +7,7 @@ const announcementSchema = new mongoose.Schema({
   },
   announcementType: {
     type: [String],
-    enum: ["notice", "event", "maintenance"],
+    enum: ["Notice", "Event", "Maintenance"],
     required: true,
   },
   description: {

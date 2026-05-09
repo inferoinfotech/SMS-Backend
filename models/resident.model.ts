@@ -15,7 +15,7 @@ const memberSchema = new mongoose.Schema({
 const residentSchema = new mongoose.Schema({
   name: {
     type: String,
-  
+
     trim: true,
   },
   email: {
@@ -59,11 +59,11 @@ const residentSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
-  address: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+  // address: {
+  //   type: String,
+  //   required: true,
+  //   trim: true,
+  // },
   profileImage: {
     type: String,
     default: "",
@@ -82,6 +82,10 @@ const residentSchema = new mongoose.Schema({
     default: "",
   },
   uploadPan: {
+    type: String,
+    default: "",
+  },
+  password: {
     type: String,
     default: "",
   },
@@ -105,21 +109,25 @@ const residentSchema = new mongoose.Schema({
       vehicleType: {
         type: String,
         enum: ["Car", "Bike", "Scooter", "Other"],
-        required: true,
       },
       vehicleName: {
         type: String,
-        required: true,
+
         trim: true,
       },
       vehicleNumber: {
         type: String,
-        required: true,
+        sparse: true,
         unique: true,
         trim: true,
       },
     },
   ],
+  society: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Society",
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("Resident", residentSchema);

@@ -55,6 +55,11 @@ const MaintenanceSchema = new mongoose.Schema(
       enum: ["Cash", "Online", "Cheque", "UPI"],
       required: true,
     },
+    society: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Society",
+      required: true,
+    },
   },
   {
     timestamps: true,
