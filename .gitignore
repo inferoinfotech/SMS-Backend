@@ -53,3 +53,4 @@ data/
 
 # ESLint cache
 .eslintcache
+uploads/
