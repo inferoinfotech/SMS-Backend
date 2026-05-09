@@ -1,4 +1,5 @@
 const Auth = require("../models/auth.model");
+const Society = require("../models/society.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const logger = require("../config/logger");
@@ -277,6 +278,22 @@ const getProfile = async (req: any, res: any) => {
       user = await Auth.findById(id).select(
         "-password -confirmPassword -resetOtp -otpExpires -__v",
       );
+      
+      if (user && user.selectSociety && user.selectSociety.length > 0) {
+        // Fetch full society details including IDs
+        const societies = await Society.find({
+          societyName: { $in: user.selectSociety }
+        });
+        
+        // We convert to JSON and add the societies array
+        const userObj = user.toObject();
+        userObj.societies = societies;
+        
+        return res.status(200).json({
+          message: "User profile fetched successfully",
+          user: userObj,
+        });
+      }
     } else if (role === "guard") {
       user = await Auth.findById(id).select("-password -__v");
     } else if (role === "resident") {
