@@ -9,8 +9,7 @@ const validate = require("../middleware/validate.middleware");
 const { createSocietySchema } = require("../schemas/society.schema");
 const protect = require("../middleware/auth.middleware");
 
-societyRouter.post("/create", protect, validate(createSocietySchema), createSociety);
-societyRouter.get("/get", protect, getAllSocieties);
-
+societyRouter.post("/create", validate(createSocietySchema), createSociety);
+societyRouter.get("/get",  getAllSocieties);
 
 module.exports = societyRouter;

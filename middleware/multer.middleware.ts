@@ -1,20 +1,13 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../config/cloudinary");
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req: any, file: any, cb: any) {
-    cb(null, uploadDir);
-  },
-  filename: function (req: any, file: any, cb: any) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "SMS_Uploads", // Folder name in Cloudinary
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    transformation: [{ width: 500, height: 500, crop: "limit" }], // Optional resizing
   },
 });
 

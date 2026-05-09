@@ -30,107 +30,93 @@ const createResident = async (req: any, res: any) => {
       society,
     } = req.body;
 
-    if (!wing || !unit || !unitStatus || !society) {
-      return res.status(400).json({ message: "Required fields missing" });
-    }
+    const missingFields = [];
+    if (!wing) missingFields.push("wing");
+    if (!unit) missingFields.push("unit");
+    if (!unitStatus) missingFields.push("unitStatus");
+    if (!society) missingFields.push("society");
 
-    //  VACANT
-    if (unitStatus === "Vacant") {
-      const resident = await Auth.findOneAndUpdate(
-        { wing, unit, society },
-        {
-          unitStatus: "Vacant",
-          role: "resident",
-          name: "",
-          email: undefined,
-          age: undefined,
-          gender: undefined,
-          phoneNumber: undefined,
-          profileImage: "",
-          relation: "",
-          uploadAadharfront: "",
-          uploadAadharback: "",
-          uploadPan: "",
-          addressProof: "",
-          rentAgreeMent: "",
-          members: [],
-          memberCount: 0,
-          vehicles: [],
-          residentStatus: undefined,
-        },
-        { upsert: true, new: true },
-      );
-
-      return res.status(200).json({
-        message: "Unit marked as vacant",
-        data: resident,
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: "Required fields missing",
+        missingFields: missingFields, // Sending the actual array
+        error: `The following fields are required: ${missingFields.join(", ")}`,
       });
     }
 
-    //  OCCUPIED
-    if (unitStatus === "Occupied") {
-      if (!name || !phoneNumber || !residentStatus) {
-        return res.status(400).json({
-          message: "Name, phone and resident status required",
-        });
-      }
+    // Always handle as Occupied since Vacant is handled by editStatusResident
+    if (unitStatus !== "Occupied") {
+      return res.status(400).json({ message: "createResident only supports 'Occupied' status. Use editStatusResident to vacate." });
+    }
 
-      // Splitting name into firstname and lastname for Auth consistency if possible
-      const nameParts = name.trim().split(" ");
-      const firstname = nameParts[0] || name;
-      const lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
+    if (!name || !phoneNumber || !residentStatus) {
+      const missingOccupied = [];
+      if (!name) missingOccupied.push("name");
+      if (!phoneNumber) missingOccupied.push("phoneNumber");
+      if (!residentStatus) missingOccupied.push("residentStatus");
 
-      const resident = await Auth.findOneAndUpdate(
-        { wing, unit, society },
-        {
-          firstname,
-          lastname,
-          name,
-          email,
-          age,
-          gender,
-          wing,
-          unit,
-          phoneNumber,
-          profileImage,
-          relation,
-          uploadAadharfront,
-          uploadAadharback,
-          uploadPan,
-          addressProof,
-          rentAgreeMent,
-          members: members || [],
-          memberCount: members ? members.length : 1,
-          vehicles: vehicles || [],
-          residentStatus,
-          unitStatus: "Occupied",
-          society,
-          role: "resident",
-        },
-        { upsert: true, new: true },
-      );
-
-      if (email) {
-        const token = jwt.sign({ id: resident._id }, process.env.JWT_SECRET, {
-          expiresIn: "1d",
-        });
-        const setupPassword = await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "Welcome to SMS",
-          html: `<p>Welcome to SMS.</p><p>Click on the link below to create your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
-        });
-
-        if (!setupPassword) {
-          console.log("Email not sent");
-        }
-      }
-
-      return res.status(201).json({
-        message: "Resident created/updated successfully",
-        data: resident,
+      return res.status(400).json({
+        message: "Occupant details required",
+        missingFields: missingOccupied,
+        error: `When unit is Occupied, these are required: ${missingOccupied.join(", ")}`,
       });
     }
+
+    // Splitting name into firstname and lastname for Auth consistency if possible
+    const nameParts = name.trim().split(" ");
+    const firstname = nameParts[0] || name;
+    const lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
+
+    const resident = await Auth.findOneAndUpdate(
+      { wing, unit, society },
+      {
+        firstname,
+        lastname,
+        name,
+        email,
+        age,
+        gender,
+        wing,
+        unit,
+        phoneNumber,
+        profileImage,
+        relation,
+        uploadAadharfront,
+        uploadAadharback,
+        uploadPan,
+        addressProof,
+        rentAgreeMent,
+        members: members || [],
+        memberCount: members ? members.length : 1,
+        vehicles: vehicles || [],
+        residentStatus,
+        unitStatus: "Occupied",
+        society,
+        role: "resident",
+      },
+      { upsert: true, new: true },
+    );
+
+    if (email) {
+      const token = jwt.sign({ id: resident._id }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+      const setupPassword = await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Welcome to SMS",
+        html: `<p>Welcome to SMS.</p><p>Click on the link below to create your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+      });
+
+      if (!setupPassword) {
+        console.log("Email not sent");
+      }
+    }
+
+    return res.status(201).json({
+      message: "Resident created/updated successfully",
+      data: resident,
+    });
 
     return res.status(400).json({
       message: "Invalid unitStatus",
@@ -140,6 +126,73 @@ const createResident = async (req: any, res: any) => {
     return res.status(500).json({
       message: "Internal server error",
     });
+  }
+};
+
+const editStatusResident = async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      email,
+      age,
+      gender,
+      wing,
+      unit,
+      phoneNumber,
+      address,
+      profileImage,
+      relation,
+      uploadAadharfront,
+      uploadAadharback,
+      uploadPan,
+      addressProof,
+      rentAgreeMent,
+      members,
+      memberCount,
+      vehicles,
+      residentStatus,
+      unitStatus,
+      society,
+    } = req.body;
+    if (!wing || !unit || !society) {
+      return res
+        .status(400)
+        .json({ message: "wing, unit and society are required" });
+    }
+    const resident = await Auth.findByIdAndUpdate(
+      id,
+      {
+        unitStatus: "Vacant",
+        name: "",
+        firstname: "",
+        lastname: "",
+        email: undefined,
+        age: undefined,
+        gender: undefined,
+        phoneNumber: undefined,
+        profileImage: "",
+        relation: "",
+        uploadAadharfront: "",
+        uploadAadharback: "",
+        uploadPan: "",
+        addressProof: "",
+        rentAgreeMent: "",
+        members: [],
+        memberCount: 0,
+        vehicles: [],
+        residentStatus: undefined,
+      },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      message: "Resident status updated successfully",
+      data: resident,
+    });
+  } catch (error: any) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
