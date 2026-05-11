@@ -2,14 +2,15 @@ const Note = require("../models/note.model");
 
 const addNote = async (req: any, res: any) => {
   try {
-    const { title, description, date } = req.body;
-    if (!title || !description || !date) {
+    const { title, description, date, society } = req.body;
+    if (!title || !description || !date || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const note = await Note.create({
       title,
       description,
       date,
+      society,
     });
     return res.status(201).json({
       message: "Note added successfully",
@@ -18,7 +19,9 @@ const addNote = async (req: any, res: any) => {
   } catch (error: any) {
     console.log(error);
 
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -45,7 +48,9 @@ const editNote = async (req: any, res: any) => {
   } catch (error: any) {
     console.log(error);
 
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -63,13 +68,17 @@ const deleteNote = async (req: any, res: any) => {
   } catch (error: any) {
     console.log(error);
 
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
 const getNote = async (req: any, res: any) => {
   try {
-    const note = await Note.find();
+    const {societyId} = req.query;
+    const targetSociety = req.user.society || societyId;
+    const note = await Note.find({society:targetSociety});
     return res.status(200).json({
       message: "Note fetched successfully",
       data: note,
@@ -77,9 +86,10 @@ const getNote = async (req: any, res: any) => {
   } catch (error: any) {
     console.log(error);
 
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
-
 
 module.exports = { addNote, editNote, deleteNote, getNote };

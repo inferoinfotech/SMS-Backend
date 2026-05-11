@@ -20,6 +20,11 @@ const securityProtocolSchema = new mongoose.Schema({
     required: true,
     default: Date.now,
   },
+  society: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Society",
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("SecurityProtocol", securityProtocolSchema);

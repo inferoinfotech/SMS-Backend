@@ -17,7 +17,12 @@ const FacilitySchema = new mongoose.Schema(
         remindBefore:{
             type: Number,
             require: true,
-        }
+        },
+        society: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Society",
+            required: true,
+        },
     },
     {
         timestamps: true,

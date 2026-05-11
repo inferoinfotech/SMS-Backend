@@ -108,7 +108,7 @@ const login = async (req: any, res: any) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role, society: user.society },
       process.env.JWT_SECRET,
       {
         expiresIn: "1h",
@@ -348,15 +348,12 @@ const editProfile = async (req: any, res: any) => {
         user.selectSociety = req.body.selectSociety;
     }
 
-    if (req.file) {
-      // Delete old photo if it exists
-      if (user.profileImage) {
-        const oldImagePath = path.join(__dirname, "..", user.profileImage);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
-      }
-      user.profileImage = `uploads/${req.file.filename}`;
+    // Handle profile image update
+    if (req.body.profileImage !== undefined) {
+      user.profileImage = req.body.profileImage;
+    } else if (req.file) {
+      // Use req.file.path for Cloudinary or fallback to local path
+      user.profileImage = req.file.path || `uploads/${req.file.filename}`;
     }
 
     const updatedUser = await user.save();

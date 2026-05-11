@@ -9,7 +9,8 @@ const createComplain = async (req: any, res: any) => {
       complainName,
       description,
       status,
-      priority,
+      priority, 
+      society
     } = req.body;
 
     if (
@@ -19,7 +20,8 @@ const createComplain = async (req: any, res: any) => {
       !complainName ||
       !description ||
       !status ||
-      !priority
+      !priority ||
+      !society
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -32,6 +34,7 @@ const createComplain = async (req: any, res: any) => {
       description,
       status,
       priority,
+      society,
     });
     res.status(201).json({ complain });
   } catch (error: any) {
@@ -84,7 +87,9 @@ const deleteComplain = async function name(req:any, res:any) {
 
 const getAllComplain = async function name(req:any, res:any) {
     try {
-        const complainList = await Complain.find();
+        const { societyId } = req.query;
+        const targetSociety = req.user.society || societyId;
+        const complainList = await Complain.find({society:targetSociety});
         if(!complainList){
             return res.status(404).json({ message: "Complain not found" });
         }

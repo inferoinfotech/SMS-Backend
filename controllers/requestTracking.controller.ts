@@ -2,7 +2,7 @@ const RequestTracking = require("../models/requestTracking.model");
 
 const createRequestTracking = async function name(req: any, res: any) {
   try {
-    const { requesterName, requestName, wing, unit, description, status, priority } =
+    const { requesterName, requestName, wing, unit, description, status, priority,society } =
       req.body;
 
     if (
@@ -11,7 +11,8 @@ const createRequestTracking = async function name(req: any, res: any) {
       !wing ||
       !unit ||
       !status ||
-      !priority
+      !priority ||
+      !society
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -24,6 +25,8 @@ const createRequestTracking = async function name(req: any, res: any) {
       description,
       status,
       priority,
+      society,
+
     });
     res.status(201).json({ requestTracking });
   } catch (error: any) {
@@ -76,8 +79,10 @@ const deleteRequestTracking = async function name(req: any, res: any) {
 };
 
 const getAllRequestTracking = async function name(req: any, res: any) {
+  const { societyId } = req.query;
+  const targetSociety = req.user.society || societyId;
   try {
-    const requestTrackingList = await RequestTracking.find();
+    const requestTrackingList = await RequestTracking.find({society:targetSociety});
     if (!requestTrackingList) {
       return res.status(404).json({ message: "RequestTracking not found" });
     }

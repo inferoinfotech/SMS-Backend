@@ -2,10 +2,11 @@ const SecurityProtocol = require("../models/securityProtocol");
 
 const createSecurityProtocol = async function (req:any, res:any) {
     try {
-        const { title, description } = req.body;
+        const { title, description , society } = req.body;
         const securityProtocol = await SecurityProtocol.create({
             title,
             description,
+            society,
         });
         res.status(201).json({ securityProtocol });
     } catch (error:any) {
@@ -44,7 +45,11 @@ const deleteSecurityProtocol = async function (req:any, res:any) {
 
 const getAllSecurityProtocol = async function (req:any, res:any) {
     try {
-        const securityProtocol = await SecurityProtocol.find();
+
+        const society = req.query;
+        const targetSociety = req.user.society || society;
+
+        const securityProtocol = await SecurityProtocol.find({ society:targetSociety });
         res.status(200).json({ securityProtocol });
     } catch (error:any) {
         console.log(error);

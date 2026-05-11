@@ -20,6 +20,7 @@ const requestTrackingRouter = require("./routes/requestTracking.router");
 const securityProtocolRouter = require("./routes/securityProtocol.router");
 const securityGuardRouter = require("./routes/securityGuard.router");
 const announcementRouter = require("./routes/Announcement.router");
+const visitorRouter = require("./routes/visitor.router");
 const app = express();
 app.use(
   cors({
@@ -47,6 +48,7 @@ app.use("/api/request", requestTrackingRouter);
 app.use("/api/security-protocol", securityProtocolRouter);
 app.use("/api/security-guard", securityGuardRouter);
 app.use("/api/announcement", announcementRouter);
+app.use("/api/visitor", visitorRouter);
 
 app.use(errorHandler);
 

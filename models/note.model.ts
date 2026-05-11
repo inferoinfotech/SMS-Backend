@@ -13,6 +13,11 @@ const noteSchema = new mongoose.Schema({
     type: Date,
     require: true,
   },
+  society: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Society",
+    required: true,
+  },
 },
   {
     timestamps: true,

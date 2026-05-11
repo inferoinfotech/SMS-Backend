@@ -22,6 +22,11 @@ const ExpanseSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    society: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Society",
+      required: true,
+    },
   },
   {
     timestamps: true,

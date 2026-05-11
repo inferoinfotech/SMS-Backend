@@ -1,13 +1,9 @@
-
-
 const Expanse = require("../models/expanse.model");
-
-
 
 const addExpanse = async (req: any, res: any) => {
   try {
-    const { title, amount, date, description, uploadBill } = req.body;
-    if (!title || !amount || !date || !description || !uploadBill) {
+    const { title, amount, date, description, uploadBill, society } = req.body;
+    if (!title || !amount || !date || !description || !uploadBill || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const expanse = await Expanse.create({
@@ -16,6 +12,7 @@ const addExpanse = async (req: any, res: any) => {
       date,
       description,
       uploadBill,
+      society,
     });
     return res.status(201).json({
       message: "Expanse added successfully",
@@ -91,10 +88,16 @@ const deleteExpanse = async (req: any, res: any) => {
   }
 };
 
-
 const getExpanse = async (req: any, res: any) => {
   try {
-    const expanse = await Expanse.find();
+    const { societyId } = req.query; // Get from query if Admin
+    const targetSociety = req.user.society || societyId;
+    const expanse = await Expanse.find({ society: targetSociety });
+    if (!expanse) {
+      return res.status(404).json({
+        message: "Expense not found",
+      });
+    }
     return res.status(200).json({
       message: "Expense fetched successfully",
       data: expanse,
@@ -108,4 +111,4 @@ const getExpanse = async (req: any, res: any) => {
   }
 };
 
-module.exports = { addExpanse, editExpanse,deleteExpanse,getExpanse };
+module.exports = { addExpanse, editExpanse, deleteExpanse, getExpanse };

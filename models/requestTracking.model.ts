@@ -35,7 +35,11 @@ const requestTrackingSchema = new mongoose.Schema(
             enum: ["High", "Medium", "Low"],
             default: "Medium"
         },
-        
+        society: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Society",
+            required: true,
+        },
     },
     { timestamps: true }
 );

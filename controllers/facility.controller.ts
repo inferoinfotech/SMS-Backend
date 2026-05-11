@@ -2,8 +2,8 @@ const Facility = require("../models/facility.model");
 
 const addFacility = async (req: any, res: any) => {
     try {
-        const { name, description, scheduleServiceDate, remindBefore } = req.body;
-        if (!name || !description || !scheduleServiceDate || !remindBefore) {
+        const { name, description, scheduleServiceDate, remindBefore,society } = req.body;
+        if (!name || !description || !scheduleServiceDate || !remindBefore || !society) {
             return res.status(400).json({ message: "All fields are required" });
         }
         const facility = await Facility.create({
@@ -11,6 +11,7 @@ const addFacility = async (req: any, res: any) => {
             description,
             scheduleServiceDate,
             remindBefore,
+            society,
         });
         return res.status(201).json({
             message: "Facility added successfully",
@@ -68,7 +69,9 @@ const deleteFacility = async (req: any, res: any) => {
 
 const getFacility = async (req: any, res: any) => {
     try {
-        const facility = await Facility.find();
+        const { societyId } = req.query;
+        const targetSociety = req.user.society || societyId;
+        const facility = await Facility.find({society:targetSociety});
         return res.status(200).json({
             message: "Facility fetched successfully",
             data: facility,

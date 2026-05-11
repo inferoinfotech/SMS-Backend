@@ -14,6 +14,7 @@ const createSecurityGuard = async function (req: any, res: any) {
       shiftTime,
       uploadAadhar,
       email,
+      society,
     } = req.body;
     if (
       !fullName ||
@@ -23,7 +24,8 @@ const createSecurityGuard = async function (req: any, res: any) {
       !shiftDate ||
       !shiftTime ||
       !uploadAadhar ||
-      !email
+      !email ||
+      !society
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -49,6 +51,7 @@ const createSecurityGuard = async function (req: any, res: any) {
       uploadAadhar,
       email,
       role: "guard",
+      society,
     });
     const token = jwt.sign({ id: securityGuard._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -142,7 +145,9 @@ const deleteSecurityGuard = async function (req: any, res: any) {
 
 const getAllSecurityGuard = async function (req: any, res: any) {
   try {
-    const securityGuard = await Auth.find({ role: "guard" });
+    const {societyId} = req.query;
+    const society = req.user.society || societyId;
+    const securityGuard = await Auth.find({ role: "guard",society:society });
     if (!securityGuard) {
       return res.status(404).json({ message: "Security guard not found" });
     }

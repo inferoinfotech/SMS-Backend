@@ -7,7 +7,7 @@ const announcementSchema = new mongoose.Schema({
   },
   announcementType: {
     type: [String],
-    enum: ["Notice", "Event", "Maintenance"],
+    enum: ["Notice", "Event", "Maintenance","Community Initiatives"],
     required: true,
   },
   description: {
@@ -24,6 +24,11 @@ const announcementSchema = new mongoose.Schema({
     type: Date,
     required: true,
     default: Date.now,
+  },
+  society: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Society",
+    required: true,
   },
 });
 
