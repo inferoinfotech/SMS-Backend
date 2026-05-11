@@ -74,6 +74,9 @@ const authSchema = new mongoose.Schema(
       },
     ],
 
+
+
+
     // Guard Specific
     shift: { type: String, enum: ["Day", "Night"] },
     shiftDate: { type: Date },

@@ -12,6 +12,7 @@ const maintenanceSetup = async (req: any, res: any) => {
       penaltyAppliedAfterDay,
       society, // Link to society
     } = req.body;
+
     if (
       !maintenanceAmount ||
       !penaltyAmount ||
@@ -22,43 +23,83 @@ const maintenanceSetup = async (req: any, res: any) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const newSetup = await MaintenanceSetting.create({
-      maintenanceAmount,
-      penaltyAmount,
-      maintenanceDueDate,
-      penaltyAppliedAfterDay,
+    // 1. Create or update the maintenance setup for this society
+    // We try to find if there's already a setup for this society with the same due date (same month/year)
+    const dueDate = new Date(maintenanceDueDate);
+    const startOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
+    const endOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0);
+
+    let setup = await MaintenanceSetting.findOne({
       society,
+      maintenanceDueDate: { $gte: startOfMonth, $lte: endOfMonth }
     });
 
-    // Create maintenance records for all residents (users with role 'resident') of this particular society
-    const residents = await Auth.find({ society, role: "resident" });
-    
-    if (residents.length > 0) {
-      const maintenanceRecords = residents.map((resident: any) => ({
-        resident: resident._id,
-        maintenanceSetup: newSetup._id,
-        name: resident.name || "N/A",
-        wing: resident.wing || "N/A",
-        unit: resident.unit || "N/A",
-        residentStatus: resident.residentStatus || "Tenant",
-        phoneNumber: resident.phoneNumber || "N/A",
-        date: maintenanceDueDate,
-        amount: maintenanceAmount,
-        penalty: 0,
-        status: "Pending",
-        payment: "Cash", // Default payment method
-        society: society,
-      }));
+    if (setup) {
+      setup.maintenanceAmount = maintenanceAmount;
+      setup.penaltyAmount = penaltyAmount;
+      setup.maintenanceDueDate = maintenanceDueDate;
+      setup.penaltyAppliedAfterDay = penaltyAppliedAfterDay;
+      await setup.save();
+    } else {
+      setup = await MaintenanceSetting.create({
+        maintenanceAmount,
+        penaltyAmount,
+        maintenanceDueDate,
+        penaltyAppliedAfterDay,
+        society,
+      });
+    }
 
-      await Maintenance.insertMany(maintenanceRecords);
+    // 2. Update or create maintenance records for all residents of this society
+    const residents = await Auth.find({ society, role: "resident" });
+
+    if (residents.length > 0) {
+      const maintenancePromises = residents.map(async (resident: any) => {
+        // Check if a maintenance record already exists for this resident in this month
+        const existingRecord = await Maintenance.findOne({
+          resident: resident._id,
+          date: { $gte: startOfMonth, $lte: endOfMonth }
+        });
+
+        if (existingRecord) {
+          // If it exists and is Pending, update it with the new amount and setup details
+          if (existingRecord.status === "Pending") {
+            existingRecord.maintenanceSetup = setup._id;
+            existingRecord.amount = maintenanceAmount;
+            existingRecord.date = maintenanceDueDate;
+            // Penalty logic can be handled here or during fetch
+            await existingRecord.save();
+          }
+          return existingRecord;
+        } else {
+          // Create a new record if none exists
+          return await Maintenance.create({
+            resident: resident._id,
+            maintenanceSetup: setup._id,
+            name: resident.name || `${resident.firstname} ${resident.lastname}` || "N/A",
+            wing: resident.wing || "N/A",
+            unit: resident.unit || "N/A",
+            residentStatus: resident.residentStatus || "Tenant",
+            phoneNumber: resident.phoneNumber || "N/A",
+            date: maintenanceDueDate,
+            amount: maintenanceAmount,
+            penalty: 0,
+            status: "Pending",
+            payment: "Cash",
+            society: society,
+          });
+        }
+      });
+
+      await Promise.all(maintenancePromises);
     }
 
     return res.status(201).json({
-      message: "Maintenance setup and records created successfully for the society",
-      data: newSetup,
+      message: "Maintenance setup and records updated successfully for the society",
+      data: setup,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: "Internal server error" + error });
+    return res.status(500).json({ message: "Internal server error: " + error.message });
   }
 };
 

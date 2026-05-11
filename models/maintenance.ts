@@ -4,7 +4,7 @@ const MaintenanceSchema = new mongoose.Schema(
   {
     resident: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Resident",
+      ref: "Auth",
       required: true,
     },
     maintenanceSetup: {
