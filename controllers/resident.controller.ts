@@ -4,6 +4,8 @@ const logger = require("../config/logger");
 const transporter = require("../utils/nodemailer/transporter");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const MaintenanceSetting = require("../models/maintenanceSetup");
+const Maintenance = require("../models/maintenance");
 
 const createResident = async (req: any, res: any) => {
   try {
@@ -96,6 +98,49 @@ const createResident = async (req: any, res: any) => {
       },
       { upsert: true, new: true },
     );
+
+    // --- AUTO-MAINTENANCE LOGIC START ---
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      // 1. Find the maintenance setup for this society for the current month
+      const setup = await MaintenanceSetting.findOne({
+        society,
+        maintenanceDueDate: { $gte: startOfMonth, $lte: endOfMonth },
+      });
+
+      if (setup) {
+        // 2. Check if a record already exists to avoid duplicates
+        const existingRecord = await Maintenance.findOne({
+          resident: resident._id,
+          date: { $gte: startOfMonth, $lte: endOfMonth },
+        });
+
+        if (!existingRecord) {
+          // 3. Create the maintenance record automatically
+          await Maintenance.create({
+            resident: resident._id,
+            maintenanceSetup: setup._id,
+            name: resident.name || `${resident.firstname} ${resident.lastname}`,
+            wing: resident.wing,
+            unit: resident.unit,
+            residentStatus: resident.residentStatus,
+            phoneNumber: resident.phoneNumber,
+            date: setup.maintenanceDueDate,
+            amount: setup.maintenanceAmount,
+            penalty: 0,
+            status: "Pending",
+            payment: "Cash",
+            society: society,
+          });
+        }
+      }
+    } catch (maintenanceError) {
+      console.error("Failed to create auto-maintenance record:", maintenanceError);
+    }
+    // --- AUTO-MAINTENANCE LOGIC END ---
 
     if (email) {
       const token = jwt.sign({ id: resident._id }, process.env.JWT_SECRET, {

@@ -193,6 +193,7 @@ const createMaintenance = async (req: any, res: any) => {
 const getMaintenance = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
+    
     let query: any = {};
 
     if (role === "resident") {
