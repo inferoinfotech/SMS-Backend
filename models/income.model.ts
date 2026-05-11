@@ -21,5 +21,10 @@ const IncomeSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  society: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Society",
+    required: true,
+  },
 });
 module.exports = mongoose.model("Income", IncomeSchema);
