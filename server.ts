@@ -21,7 +21,27 @@ const securityProtocolRouter = require("./routes/securityProtocol.router");
 const securityGuardRouter = require("./routes/securityGuard.router");
 const announcementRouter = require("./routes/Announcement.router");
 const visitorRouter = require("./routes/visitor.router");
+const { Server } = require("socket.io");
+const http = require("http");
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+app.set("io", io);
+
+io.on("connection", (socket: any) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -52,6 +72,6 @@ app.use("/api/visitor", visitorRouter);
 
 app.use(errorHandler);
 
-app.listen(process.env.PORT || 5000, () => {
+server.listen(process.env.PORT || 5000, () => {
   logger.info(`Server is running on port ${process.env.PORT || 5000}`);
 });

@@ -9,6 +9,8 @@ const Maintenance = require("../models/maintenance");
 
 const createResident = async (req: any, res: any) => {
   try {
+    const files = req.files as { [fieldname: string]: any[] } | undefined;
+
     const {
       name,
       email,
@@ -17,13 +19,7 @@ const createResident = async (req: any, res: any) => {
       wing,
       unit,
       phoneNumber,
-      profileImage,
       relation,
-      uploadAadharfront,
-      uploadAadharback,
-      uploadPan,
-      addressProof,
-      rentAgreeMent,
       members,
       memberCount,
       vehicles,
@@ -31,6 +27,19 @@ const createResident = async (req: any, res: any) => {
       unitStatus,
       society,
     } = req.body;
+
+    // Handle Cloudinary URLs from files
+    const profileImage =
+      files?.profileImage?.[0]?.path || req.body.profileImage;
+    const uploadAadharfront =
+      files?.uploadAadharfront?.[0]?.path || req.body.uploadAadharfront;
+    const uploadAadharback =
+      files?.uploadAadharback?.[0]?.path || req.body.uploadAadharback;
+    const uploadPan = files?.uploadPan?.[0]?.path || req.body.uploadPan;
+    const addressProof =
+      files?.addressProof?.[0]?.path || req.body.addressProof;
+    const rentAgreeMent =
+      files?.rentAgreeMent?.[0]?.path || req.body.rentAgreeMent;
 
     const missingFields = [];
     if (!wing) missingFields.push("wing");
@@ -48,7 +57,12 @@ const createResident = async (req: any, res: any) => {
 
     // Always handle as Occupied since Vacant is handled by editStatusResident
     if (unitStatus !== "Occupied") {
-      return res.status(400).json({ message: "createResident only supports 'Occupied' status. Use editStatusResident to vacate." });
+      return res
+        .status(400)
+        .json({
+          message:
+            "createResident only supports 'Occupied' status. Use editStatusResident to vacate.",
+        });
     }
 
     if (!name || !phoneNumber || !residentStatus) {
@@ -69,18 +83,21 @@ const createResident = async (req: any, res: any) => {
     const firstname = nameParts[0] || name;
     const lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
 
+    const sanitizedEmail = email === "" ? undefined : email;
+    const sanitizedPhoneNumber = phoneNumber === "" ? undefined : phoneNumber;
+
     const resident = await Auth.findOneAndUpdate(
       { wing, unit, society },
       {
         firstname,
         lastname,
         name,
-        email,
+        email: sanitizedEmail,
         age,
         gender,
         wing,
         unit,
-        phoneNumber,
+        phoneNumber: sanitizedPhoneNumber,
         profileImage,
         relation,
         uploadAadharfront,
@@ -138,7 +155,10 @@ const createResident = async (req: any, res: any) => {
         }
       }
     } catch (maintenanceError) {
-      console.error("Failed to create auto-maintenance record:", maintenanceError);
+      console.error(
+        "Failed to create auto-maintenance record:",
+        maintenanceError,
+      );
     }
     // --- AUTO-MAINTENANCE LOGIC END ---
 
@@ -157,6 +177,13 @@ const createResident = async (req: any, res: any) => {
         console.log("Email not sent");
       }
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Resident",
+      message: `Resident ${resident.name} has been added.`,
+      type: "success",
+    });
 
     return res.status(201).json({
       message: "Resident created/updated successfully",
@@ -177,14 +204,16 @@ const createResident = async (req: any, res: any) => {
 const editStatusResident = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    
+
     // We don't strictly need wing/unit/society in the body because we are finding by ID,
     // but we can keep the validation if you want to ensure the frontend is sending them.
     const { wing, unit, society } = req.body;
     if (!wing || !unit || !society) {
       return res
         .status(400)
-        .json({ message: "Wing, unit and society are required to confirm vacancy" });
+        .json({
+          message: "Wing, unit and society are required to confirm vacancy",
+        });
     }
 
     const resident = await Auth.findByIdAndUpdate(
@@ -194,9 +223,9 @@ const editStatusResident = async (req: any, res: any) => {
         name: "",
         firstname: "",
         lastname: "",
-        email: "", // Clear email
-        password: "", // Clear password for next resident
-        phoneNumber: "", // Clear phone
+        email: undefined, // Set to undefined to avoid unique constraint issues
+        password: undefined, // Clear password for next resident
+        phoneNumber: undefined, // Set to undefined to avoid unique constraint issues
         address: "", // Clear address
         age: undefined,
         gender: undefined,
@@ -218,6 +247,13 @@ const editStatusResident = async (req: any, res: any) => {
     if (!resident) {
       return res.status(404).json({ message: "Resident record not found" });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Unit Vacated",
+      message: `Unit ${resident.wing}-${resident.unit} has been vacated.`,
+      type: "info",
+    });
 
     return res.status(200).json({
       message: "Unit vacated and resident details cleared successfully",
@@ -316,6 +352,7 @@ const createPassword = async function (req: any, res: any) {
 const editResident = async (req: any, res: any) => {
   try {
     const { id } = req.params;
+    const files = req.files as { [fieldname: string]: any[] } | undefined;
     const {
       name,
       email,
@@ -325,13 +362,7 @@ const editResident = async (req: any, res: any) => {
       unit,
       phoneNumber,
       address,
-      profileImage,
       relation,
-      uploadAadharfront,
-      uploadAadharback,
-      uploadPan,
-      addressProof,
-      rentAgreeMent,
       members,
       memberCount,
       vehicles,
@@ -339,10 +370,26 @@ const editResident = async (req: any, res: any) => {
       unitStatus,
       society,
     } = req.body;
+
+    // Handle Cloudinary URLs from files
+    const profileImage =
+      files?.profileImage?.[0]?.path || req.body.profileImage;
+    const uploadAadharfront =
+      files?.uploadAadharfront?.[0]?.path || req.body.uploadAadharfront;
+    const uploadAadharback =
+      files?.uploadAadharback?.[0]?.path || req.body.uploadAadharback;
+    const uploadPan = files?.uploadPan?.[0]?.path || req.body.uploadPan;
+    const addressProof =
+      files?.addressProof?.[0]?.path || req.body.addressProof;
+    const rentAgreeMent =
+      files?.rentAgreeMent?.[0]?.path || req.body.rentAgreeMent;
     // Splitting name into firstname and lastname for Auth consistency
     const nameParts = (name || "").trim().split(" ");
     const firstname = nameParts[0] || name || "";
     const lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
+
+    const sanitizedEmail = email === "" ? undefined : email;
+    const sanitizedPhoneNumber = phoneNumber === "" ? undefined : phoneNumber;
 
     const resident = await Auth.findByIdAndUpdate(
       id,
@@ -350,12 +397,12 @@ const editResident = async (req: any, res: any) => {
         firstname,
         lastname,
         name,
-        email,
+        email: sanitizedEmail,
         age,
         gender,
         wing,
         unit,
-        phoneNumber,
+        phoneNumber: sanitizedPhoneNumber,
         address,
         profileImage,
         relation,
@@ -376,7 +423,14 @@ const editResident = async (req: any, res: any) => {
     if (!resident) {
       return res.status(404).json({ message: "Resident not found" });
     }
-    res
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Resident Updated",
+      message: `Resident ${resident.name} details have been updated.`,
+      type: "success",
+    });
+
+    return res
       .status(200)
       .json({ message: "Resident updated successfully", data: resident });
   } catch (error) {

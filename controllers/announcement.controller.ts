@@ -14,7 +14,14 @@ const createAnnouncement = async function (req: any, res: any) {
       time,
       society
     });
-        res.status(201).json({ announcement });
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Announcement",
+      message: `A new announcement "${announcement.title}" has been posted.`,
+      type: "info",
+    });
+
+    res.status(201).json({ announcement });
     } catch (error:any) {
         console.log(error);
         res.status(500).json({ message: error.message });
@@ -32,7 +39,14 @@ const editAnnouncement = async function(req:any, res:any) {
             date,
             time,
         }, { new: true });
-        res.status(200).json({ announcement });
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Announcement Updated",
+      message: `Announcement "${announcement.title}" has been updated.`,
+      type: "info",
+    });
+
+    res.status(200).json({ announcement });
     } catch (error:any) {
         console.log(error);
         res.status(500).json({ message: error.message });

@@ -36,6 +36,13 @@ const createComplain = async (req: any, res: any) => {
       priority,
       society,
     });
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Complaint",
+      message: `A new complaint "${complain.complainName}" has been filed by ${complain.compainerName}.`,
+      type: "warning",
+    });
+
     res.status(201).json({ complain });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -64,6 +71,13 @@ const editComplain = async (req: any, res: any) => {
     if (!updateComplain) {
       return res.status(404).json({ message: "Complain not found" });
     }
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Complaint Updated",
+      message: `Complaint "${updateComplain.complainName}" status has been updated to ${updateComplain.status}.`,
+      type: "info",
+    });
+
     res.status(200).json({ updateComplain });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

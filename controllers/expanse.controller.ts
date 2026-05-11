@@ -2,7 +2,9 @@ const Expanse = require("../models/expanse.model");
 
 const addExpanse = async (req: any, res: any) => {
   try {
-    const { title, amount, date, description, uploadBill, society } = req.body;
+    const { title, amount, date, description, society } = req.body;
+    const uploadBill = req.file ? req.file.path : req.body.uploadBill;
+
     if (!title || !amount || !date || !description || !uploadBill || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -14,6 +16,13 @@ const addExpanse = async (req: any, res: any) => {
       uploadBill,
       society,
     });
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Expense",
+      message: `A new expense "${expanse.title}" of ₹${expanse.amount} has been added.`,
+      type: "success",
+    });
+
     return res.status(201).json({
       message: "Expanse added successfully",
       data: expanse,
@@ -29,7 +38,8 @@ const editExpanse = async (req: any, res: any) => {
   try {
     const { id } = req.params;
 
-    const { title, amount, date, description, uploadBill } = req.body;
+    const { title, amount, date, description } = req.body;
+    const uploadBill = req.file ? req.file.path : req.body.uploadBill;
 
     const expanse = await Expanse.findByIdAndUpdate(
       id,
@@ -51,6 +61,13 @@ const editExpanse = async (req: any, res: any) => {
         message: "Expense not found",
       });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Expense Updated",
+      message: `Expense "${expanse.title}" has been updated.`,
+      type: "info",
+    });
 
     return res.status(200).json({
       message: "Expense updated successfully",
