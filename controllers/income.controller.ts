@@ -8,7 +8,7 @@ const addIncome = async (req: any, res: any) => {
     if (!title || !amount || !date || !dueDate || !description || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
-    
+
     const income = await Income.create({
       title,
       amount,
@@ -17,6 +17,14 @@ const addIncome = async (req: any, res: any) => {
       description,
       society,
     });
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Income",
+      message: `New income entry "${income.title}" of ₹${income.amount} added.`,
+      type: "success",
+    });
+
     return res.status(201).json({
       message: "Income added successfully",
       data: income,
@@ -39,7 +47,7 @@ const editIncome = async (req: any, res: any) => {
         date,
         dueDate,
         description,
-        society
+        society,
       },
       { new: true },
     );
@@ -49,6 +57,14 @@ const editIncome = async (req: any, res: any) => {
         message: "Income not found",
       });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Income Updated",
+      message: `Income entry "${income.title}" has been updated.`,
+      type: "info",
+    });
+
     return res.status(200).json({
       message: "Income updated successfully",
       data: income,
@@ -68,6 +84,14 @@ const deleteIncome = async (req: any, res: any) => {
         message: "Income not found",
       });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Income Deleted",
+      message: `Income entry "${income.title}" has been removed.`,
+      type: "warning",
+    });
+
     return res.status(200).json({
       message: "Income deleted successfully",
       data: income,

@@ -1,19 +1,25 @@
 const ImportantNumber = require("../models/importantNumber.model");
 
-const createImportantNumber = async function name(req: any, res: any) {
+const createImportantNumber = async (req: any, res: any) => {
   try {
-    const { societyId } = req.query;
-    const targetSociety = req.user.society || societyId;
-    const { name, number, work } = req.body;
-    if (!name || !number || !work) {
+    const { name, number, work, society } = req.body;
+    if (!name || !number || !work || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const importantNumber = await ImportantNumber.create({
       name,
       number,
       work,
-      society: targetSociety,
+      society,
     });
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Contact",
+      message: `Important number for "${importantNumber.name}" added.`,
+      type: "success",
+    });
+
     res.status(201).json({ importantNumber });
   } catch (error: any) {
     console.log(error);
@@ -21,11 +27,38 @@ const createImportantNumber = async function name(req: any, res: any) {
   }
 };
 
-const getAllImportantNumber = async function name(req: any, res: any) {
+const getAllImportantNumber = async (req: any, res: any) => {
   try {
+    const { role, id } = req.user;
     const { societyId } = req.query;
-    const targetSociety = req.user.society || societyId;
-    const importantNumber = await ImportantNumber.find({society:targetSociety});
+    let query: any = {};
+
+    if (role === "admin") {
+      if (societyId) {
+        query.society = societyId;
+      } else {
+        const Auth = require("../models/auth.model");
+        const Society = require("../models/society.model");
+        const admin = await Auth.findById(id);
+        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+          return res.status(200).json({ importantNumber: [] });
+        }
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      }
+    } else if (role === "resident") {
+      const Auth = require("../models/auth.model");
+      const resident = await Auth.findById(id);
+      if (!resident || !resident.society) {
+        return res.status(404).json({ message: "Society not found for resident" });
+      }
+      query.society = resident.society;
+    }
+
+    const importantNumber = await ImportantNumber.find(query).sort({ createdAt: -1 });
     res.status(200).json({ importantNumber });
   } catch (error: any) {
     console.log(error);
@@ -33,7 +66,7 @@ const getAllImportantNumber = async function name(req: any, res: any) {
   }
 };
 
-const editImportantNumber = async function name(req: any, res: any) {
+const editImportantNumber = async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const { name, number, work } = req.body;
@@ -42,6 +75,17 @@ const editImportantNumber = async function name(req: any, res: any) {
       { name, number, work },
       { new: true },
     );
+    if (!importantNumber) {
+      return res.status(404).json({ message: "Important number not found" });
+    }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Contact Updated",
+      message: `Important number for "${importantNumber.name}" updated.`,
+      type: "info",
+    });
+
     res.status(200).json({ importantNumber });
   } catch (error: any) {
     console.log(error);
@@ -49,10 +93,21 @@ const editImportantNumber = async function name(req: any, res: any) {
   }
 };
 
-const deleteImportantNumber = async function name(req: any, res: any) {
+const deleteImportantNumber = async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const importantNumber = await ImportantNumber.findByIdAndDelete(id);
+    if (!importantNumber) {
+      return res.status(404).json({ message: "Important number not found" });
+    }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Contact Deleted",
+      message: `Important number for "${importantNumber.name}" removed.`,
+      type: "warning",
+    });
+
     res.status(200).json({ importantNumber });
   } catch (error: any) {
     console.log(error);

@@ -53,28 +53,63 @@ const editAnnouncement = async function(req:any, res:any) {
     }
 }
 
-const deleteAnnouncement = async function(req:any, res:any) {
-    try {
-        const id = req.params.id;
-        const announcement = await Announcement.findByIdAndDelete(id);
-        res.status(200).json({ announcement });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
-    }
-}
+const deleteAnnouncement = async function (req: any, res: any) {
+  try {
+    const id = req.params.id;
+    const announcement = await Announcement.findByIdAndDelete(id);
 
-const getAllAnnouncement = async function(req:any, res:any) {
-    try {
-        const societyId = req.query.societyId;
-        const targetSociety = req.user.society || societyId;
-        const announcement = await Announcement.find({ society:targetSociety });
-        res.status(200).json({ announcement });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Announcement Deleted",
+      message: `Announcement "${announcement.title}" has been removed.`,
+      type: "warning",
+    });
+
+    res.status(200).json({ announcement });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAllAnnouncement = async function (req: any, res: any) {
+  try {
+    const { role, id } = req.user;
+    const { societyId } = req.query;
+    let query: any = {};
+
+    if (role === "admin") {
+      if (societyId) {
+        query.society = societyId;
+      } else {
+        const Auth = require("../models/auth.model");
+        const Society = require("../models/society.model");
+        const admin = await Auth.findById(id);
+        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+          return res.status(200).json({ announcement: [] });
+        }
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      }
+    } else if (role === "resident") {
+      const Auth = require("../models/auth.model");
+      const resident = await Auth.findById(id);
+      if (!resident || !resident.society) {
+        return res.status(404).json({ message: "Society not found for resident" });
+      }
+      query.society = resident.society;
     }
-}
+
+    const announcement = await Announcement.find(query).sort({ createdAt: -1 });
+    res.status(200).json({ announcement });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
     createAnnouncement,

@@ -6,12 +6,20 @@ const Society = require("../models/society.model");
 
 const addVisitor = async (req: any, res: any) => {
     try {
-        const { name, phoneNumber, wing, unit, date, time,society } = req.body;
+        const { name, phoneNumber, wing, unit, date, time, society } = req.body;
         if (!name || !phoneNumber || !wing || !unit || !date || !time || !society) {
             return res.status(400).json({ message: "All fields are required" });
         }
-        const visitor = new Visitor({ name, phoneNumber, wing, unit, date, time,society });
+        const visitor = new Visitor({ name, phoneNumber, wing, unit, date, time, society });
         await visitor.save();
+
+        const io = req.app.get("io");
+        io.emit("notification", {
+            title: "New Visitor",
+            message: `A visitor "${visitor.name}" has arrived for Unit ${visitor.unit}.`,
+            type: "info",
+        });
+
         res.status(201).json({ message: "Visitor added successfully" });
     } catch (error: any) {
         return res.status(500).json({ message: "Internal server error" });

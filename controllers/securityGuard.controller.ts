@@ -92,6 +92,14 @@ const createSecurityGuard = async function (req: any, res: any) {
       securityGuard,
       setuplink,
     });
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Security Guard",
+      message: `A new security guard "${securityGuard.name}" has been registered.`,
+      type: "success",
+    });
+
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ message: error.message });
@@ -137,6 +145,17 @@ const editSecurityGuard = async function (req: any, res: any) {
     }
 
     const securityGuard = await Auth.findByIdAndUpdate(id, updateData, { new: true });
+    if (!securityGuard) {
+      return res.status(404).json({ message: "Security guard not found" });
+    }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Guard Updated",
+      message: `Security guard "${securityGuard.name}" details have been updated.`,
+      type: "info",
+    });
+
     res.status(200).json({ securityGuard });
   } catch (error: any) {
     console.log(error);
@@ -151,6 +170,14 @@ const deleteSecurityGuard = async function (req: any, res: any) {
     if (!securityGuard) {
       return res.status(404).json({ message: "Security guard not found" });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Guard Deleted",
+      message: `Security guard "${securityGuard.name}" has been removed.`,
+      type: "warning",
+    });
+
     res.status(200).json({ message: "Security guard deleted successfully" });
   } catch (error: any) {
     console.log(error);
@@ -160,12 +187,34 @@ const deleteSecurityGuard = async function (req: any, res: any) {
 
 const getAllSecurityGuard = async function (req: any, res: any) {
   try {
-    const {societyId} = req.query;
-    const society = req.user.society || societyId;
-    const securityGuard = await Auth.find({ role: "guard",society:society });
-    if (!securityGuard) {
-      return res.status(404).json({ message: "Security guard not found" });
+    const { role, id } = req.user;
+    const { societyId } = req.query;
+    let query: any = { role: "guard" };
+
+    if (role === "admin") {
+      if (societyId) {
+        query.society = societyId;
+      } else {
+        const Society = require("../models/society.model");
+        const admin = await Auth.findById(id);
+        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+          return res.status(200).json({ securityGuard: [] });
+        }
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      }
+    } else if (role === "resident") {
+      const resident = await Auth.findById(id);
+      if (!resident || !resident.society) {
+        return res.status(404).json({ message: "Society not found for resident" });
+      }
+      query.society = resident.society;
     }
+
+    const securityGuard = await Auth.find(query).sort({ createdAt: -1 });
     res.status(200).json({ securityGuard });
   } catch (error: any) {
     console.log(error);

@@ -92,6 +92,14 @@ const deleteExpanse = async (req: any, res: any) => {
         message: "Expense not found",
       });
     }
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Expense Deleted",
+      message: `Expense "${expanse.title}" has been removed.`,
+      type: "warning",
+    });
+
     return res.status(200).json({
       message: "Expense deleted successfully",
       data: expanse,
@@ -107,14 +115,36 @@ const deleteExpanse = async (req: any, res: any) => {
 
 const getExpanse = async (req: any, res: any) => {
   try {
-    const { societyId } = req.query; // Get from query if Admin
-    const targetSociety = req.user.society || societyId;
-    const expanse = await Expanse.find({ society: targetSociety });
-    if (!expanse) {
-      return res.status(404).json({
-        message: "Expense not found",
-      });
+    const { role, id } = req.user;
+    const { societyId } = req.query;
+    let query: any = {};
+
+    if (role === "admin") {
+      if (societyId) {
+        query.society = societyId;
+      } else {
+        const Auth = require("../models/auth.model");
+        const Society = require("../models/society.model");
+        const admin = await Auth.findById(id);
+        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+          return res.status(200).json({ data: [] });
+        }
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      }
+    } else if (role === "resident") {
+      const Auth = require("../models/auth.model");
+      const resident = await Auth.findById(id);
+      if (!resident || !resident.society) {
+        return res.status(404).json({ message: "Society not found for resident" });
+      }
+      query.society = resident.society;
     }
+
+    const expanse = await Expanse.find(query).sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Expense fetched successfully",
       data: expanse,

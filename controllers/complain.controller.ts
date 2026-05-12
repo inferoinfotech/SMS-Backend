@@ -84,35 +84,66 @@ const editComplain = async (req: any, res: any) => {
   }
 };
 
-const deleteComplain = async function name(req:any, res:any) {
-    try {
-        const id = req.params.id;
-        const deleteComplain = await Complain.findByIdAndDelete(id);
-        if(!deleteComplain){
-            return res.status(404).json({ message: "Complain not found" });
-        }
-        res.status(200).json({ deleteComplain });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+const deleteComplain = async (req: any, res: any) => {
+  try {
+    const id = req.params.id;
+    const deletedComplain = await Complain.findByIdAndDelete(id);
+    if (!deletedComplain) {
+      return res.status(404).json({ message: "Complain not found" });
     }
-}
 
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Complaint Deleted",
+      message: `Complaint "${deletedComplain.complainName}" has been removed.`,
+      type: "warning",
+    });
 
-const getAllComplain = async function name(req:any, res:any) {
-    try {
-        const { societyId } = req.query;
-        const targetSociety = req.user.society || societyId;
-        const complainList = await Complain.find({society:targetSociety});
-        if(!complainList){
-            return res.status(404).json({ message: "Complain not found" });
+    res.status(200).json({ deletedComplain });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAllComplain = async (req: any, res: any) => {
+  try {
+    const { role, id } = req.user;
+    const { societyId } = req.query;
+    let query: any = {};
+
+    if (role === "admin") {
+      if (societyId) {
+        query.society = societyId;
+      } else {
+        const Auth = require("../models/auth.model");
+        const Society = require("../models/society.model");
+        const admin = await Auth.findById(id);
+        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+          return res.status(200).json({ complainList: [] });
         }
-        res.status(200).json({ complainList });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
+        const societies = await Society.find({
+          societyName: { $in: admin.selectSociety },
+        });
+        const societyIds = societies.map((s: any) => s._id);
+        query.society = { $in: societyIds };
+      }
+    } else if (role === "resident") {
+      const Auth = require("../models/auth.model");
+      const resident = await Auth.findById(id);
+      if (!resident || !resident.society) {
+        return res.status(404).json({ message: "Society not found for resident" });
+      }
+      query.society = resident.society;
     }
-}
+
+    const complainList = await Complain.find(query).sort({ createdAt: -1 });
+    res.status(200).json({ complainList });
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 module.exports = { createComplain , editComplain , deleteComplain , getAllComplain};

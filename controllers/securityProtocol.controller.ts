@@ -2,44 +2,68 @@ const SecurityProtocol = require("../models/securityProtocol");
 const Auth = require("../models/auth.model");
 const Society = require("../models/society.model");
 
-const createSecurityProtocol = async function (req:any, res:any) {
+const createSecurityProtocol = async function (req: any, res: any) {
     try {
-        const { title, description , society } = req.body;
+        const { title, description, society } = req.body;
         const securityProtocol = await SecurityProtocol.create({
             title,
             description,
             society,
         });
+
+        const io = req.app.get("io");
+        io.emit("notification", {
+            title: "New Protocol",
+            message: `New security protocol "${title}" created.`,
+            type: "success",
+        });
+
         res.status(201).json({ securityProtocol });
-    } catch (error:any) {
+    } catch (error: any) {
         console.log(error);
         res.status(500).json({ message: error.message });
     }
 }
 
-const editSecurityProtocol = async function (req:any, res:any) {
+const editSecurityProtocol = async function (req: any, res: any) {
     try {
         const id = req.params.id;
-        const { title, description,date , time } = req.body;
+        const { title, description, date, time } = req.body;
         const securityProtocol = await SecurityProtocol.findByIdAndUpdate(id, {
             title,
             description,
             date,
             time,
         }, { new: true });
+
+        const io = req.app.get("io");
+        io.emit("notification", {
+            title: "Protocol Updated",
+            message: `Security protocol "${securityProtocol.title}" has been updated.`,
+            type: "info",
+        });
+
         res.status(200).json({ securityProtocol });
-    } catch (error:any) {
+    } catch (error: any) {
         console.log(error);
         res.status(500).json({ message: error.message });
     }
 }
 
-const deleteSecurityProtocol = async function (req:any, res:any) {
+const deleteSecurityProtocol = async function (req: any, res: any) {
     try {
         const id = req.params.id;
         const securityProtocol = await SecurityProtocol.findByIdAndDelete(id);
+
+        const io = req.app.get("io");
+        io.emit("notification", {
+            title: "Protocol Deleted",
+            message: `Security protocol "${securityProtocol.title}" has been removed.`,
+            type: "warning",
+        });
+
         res.status(200).json({ securityProtocol });
-    } catch (error:any) {
+    } catch (error: any) {
         console.log(error);
         res.status(500).json({ message: error.message });
     }

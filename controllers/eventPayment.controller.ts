@@ -18,6 +18,13 @@ const createEventPayment = async (req: any, res: any) => {
       society,
     });
 
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Event Payment",
+      message: `A new event payment of ₹${newPayment.amount} has been received.`,
+      type: "success",
+    });
+
     return res.status(201).json({
       message: "Event payment recorded successfully",
       data: newPayment,

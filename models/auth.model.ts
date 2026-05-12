@@ -5,7 +5,7 @@ const memberSchema = new mongoose.Schema({
   phoneNumber: String,
   email: String,
   age: Number,
-  gender: { type: String, enum: ["male", "female", "other"] },
+  gender: { type: String, enum: ["Male", "Female", "Other"] },
   relation: String,
 });
 
