@@ -193,6 +193,7 @@ const createMaintenance = async (req: any, res: any) => {
 const getMaintenance = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
+    const { status } = req.query;
     
     let query: any = {};
 
@@ -218,9 +219,14 @@ const getMaintenance = async (req: any, res: any) => {
       }
     }
 
+    if (status) {
+      query.status = status;
+    }
+
     const maintenanceRecords = await Maintenance.find(query)
       .populate("resident")
-      .populate("maintenanceSetup");
+      .populate("maintenanceSetup")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({ data: maintenanceRecords });
   } catch (error: any) {
