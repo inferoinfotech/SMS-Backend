@@ -1,4 +1,6 @@
 const ImportantNumber = require("../models/importantNumber.model");
+const Auth = require("../models/auth.model");
+const Society = require("../models/society.model");
 
 const createImportantNumber = async (req: any, res: any) => {
   try {
@@ -31,14 +33,13 @@ const getAllImportantNumber = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
     const { societyId } = req.query;
+    
     let query: any = {};
 
     if (role === "admin") {
       if (societyId) {
         query.society = societyId;
       } else {
-        const Auth = require("../models/auth.model");
-        const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
         if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
           return res.status(200).json({ importantNumber: [] });
@@ -50,7 +51,6 @@ const getAllImportantNumber = async (req: any, res: any) => {
         query.society = { $in: societyIds };
       }
     } else if (role === "resident") {
-      const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
         return res.status(404).json({ message: "Society not found for resident" });
