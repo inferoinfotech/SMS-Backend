@@ -2,6 +2,8 @@ const jwt = require("jsonwebtoken");
 const Auth = require("../models/auth.model");
 const transporter = require("../utils/nodemailer/transporter");
 require("dotenv").config();
+const Society = require("../models/society.model");
+
 
 const createSecurityGuard = async function (req: any, res: any) {
   try {

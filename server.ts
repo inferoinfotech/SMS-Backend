@@ -24,10 +24,7 @@ const visitorRouter = require("./routes/visitor.router");
 const importantNumberRouter = require("./routes/importantNumber.router");
 const dashboardRouter = require("./routes/dashboard.router");
 const eventPaymentRouter = require("./routes/eventPayment.router");
-
-
-
-
+const emergencyRouter = require("./routes/emergency.router");
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -77,9 +74,10 @@ app.use("/api/security-protocol", securityProtocolRouter);
 app.use("/api/security-guard", securityGuardRouter);
 app.use("/api/announcement", announcementRouter);
 app.use("/api/visitor", visitorRouter);
-app.use("/api/important-number", importantNumberRouter);  
+app.use("/api/important-number", importantNumberRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/event-payment", eventPaymentRouter);
+app.use("/api/emergency", emergencyRouter);
 
 app.use(errorHandler);
 
