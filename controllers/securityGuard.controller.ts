@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const createSecurityGuard = async function (req: any, res: any) {
   try {
+    const files = req.files as { [fieldname: string]: any[] } | undefined;
     const {
       fullName,
       phoneNumber,
@@ -12,10 +13,14 @@ const createSecurityGuard = async function (req: any, res: any) {
       gender,
       shiftDate,
       shiftTime,
-      uploadAadhar,
       email,
       society,
     } = req.body;
+
+    // Handle uploaded files
+    const profileImage = files?.profileImage?.[0]?.path || "";
+    const uploadAadhar = files?.uploadAadhar?.[0]?.path || req.body.uploadAadhar || "";
+
     if (
       !fullName ||
       !phoneNumber ||
@@ -48,6 +53,7 @@ const createSecurityGuard = async function (req: any, res: any) {
       gender,
       shiftDate,
       shiftTime,
+      profileImage,
       uploadAadhar,
       email,
       role: "guard",
@@ -95,6 +101,7 @@ const createSecurityGuard = async function (req: any, res: any) {
 const editSecurityGuard = async function (req: any, res: any) {
   try {
     const id = req.params.id;
+    const files = req.files as { [fieldname: string]: any[] } | undefined;
     const {
       fullName,
       phoneNumber,
@@ -102,26 +109,34 @@ const editSecurityGuard = async function (req: any, res: any) {
       gender,
       shiftDate,
       shiftTime,
-      uploadAadhar,
     } = req.body;
-    const nameParts = (fullName || "").trim().split(" ");
-    const firstname = nameParts[0] || fullName || "";
-    const lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
 
-    const securityGuard = await Auth.findByIdAndUpdate(
-      id,
-      {
-        firstname,
-        lastname,
-        name: fullName,
-        phoneNumber,
-        shift,
-        gender,
-        shiftDate,
-        shiftTime,
-      },
-      { new: true },
-    );
+    const updateData: any = {
+      name: fullName,
+      phoneNumber,
+      shift,
+      gender,
+      shiftDate,
+      shiftTime,
+    };
+
+    if (fullName) {
+      const nameParts = (fullName || "").trim().split(" ");
+      updateData.firstname = nameParts[0] || fullName || "";
+      updateData.lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
+    }
+
+    // Update files if new ones are uploaded
+    if (files?.profileImage?.[0]?.path) {
+      updateData.profileImage = files.profileImage[0].path;
+    }
+    if (files?.uploadAadhar?.[0]?.path) {
+      updateData.uploadAadhar = files.uploadAadhar[0].path;
+    } else if (req.body.uploadAadhar) {
+      updateData.uploadAadhar = req.body.uploadAadhar;
+    }
+
+    const securityGuard = await Auth.findByIdAndUpdate(id, updateData, { new: true });
     res.status(200).json({ securityGuard });
   } catch (error: any) {
     console.log(error);

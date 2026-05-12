@@ -268,7 +268,7 @@ const editStatusResident = async (req: any, res: any) => {
 const getAllResidents = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
-    let query: any = {};
+    let query: any = { role: "resident" };
 
     if (role === "admin") {
       // Find the admin to get their associated societies
@@ -342,7 +342,7 @@ const createPassword = async function (req: any, res: any) {
       },
       { new: true },
     );
-    res.status(200).json({ message: " Resident password set successfully" });
+    res.status(200).json({ message: "Password set successfully" });
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ message: error.message });
