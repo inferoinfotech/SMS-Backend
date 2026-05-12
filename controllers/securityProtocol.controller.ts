@@ -1,4 +1,6 @@
 const SecurityProtocol = require("../models/securityProtocol");
+const Auth = require("../models/auth.model");
+const Society = require("../models/society.model");
 
 const createSecurityProtocol = async function (req:any, res:any) {
     try {
@@ -43,15 +45,37 @@ const deleteSecurityProtocol = async function (req:any, res:any) {
     }
 }
 
-const getAllSecurityProtocol = async function (req:any, res:any) {
+const getAllSecurityProtocol = async function (req: any, res: any) {
     try {
+        const { role, id } = req.user;
+        const { societyId } = req.query;
+        let query: any = {};
 
-        const society = req.query;
-        const targetSociety = req.user.society || society;
+        if (role === "admin") {
+            if (societyId) {
+                query.society = societyId;
+            } else {
+                const admin = await Auth.findById(id);
+                if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+                    return res.status(200).json({ data: [] });
+                }
+                const societies = await Society.find({
+                    societyName: { $in: admin.selectSociety },
+                });
+                const societyIds = societies.map((s: any) => s._id);
+                query.society = { $in: societyIds };
+            }
+        } else if (role === "resident") {
+            const resident = await Auth.findById(id);
+            if (!resident || !resident.society) {
+                return res.status(404).json({ message: "Society not found for resident" });
+            }
+            query.society = resident.society;
+        }
 
-        const securityProtocol = await SecurityProtocol.find({ society:targetSociety });
+        const securityProtocol = await SecurityProtocol.find(query).sort({ createdAt: -1 });
         res.status(200).json({ securityProtocol });
-    } catch (error:any) {
+    } catch (error: any) {
         console.log(error);
         res.status(500).json({ message: error.message });
     }
