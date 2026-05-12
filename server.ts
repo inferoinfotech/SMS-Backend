@@ -23,6 +23,7 @@ const announcementRouter = require("./routes/Announcement.router");
 const visitorRouter = require("./routes/visitor.router");
 const importantNumberRouter = require("./routes/importantNumber.router");
 const dashboardRouter = require("./routes/dashboard.router");
+const eventPaymentRouter = require("./routes/eventPayment.router");
 
 
 
@@ -78,6 +79,7 @@ app.use("/api/announcement", announcementRouter);
 app.use("/api/visitor", visitorRouter);
 app.use("/api/important-number", importantNumberRouter);  
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/event-payment", eventPaymentRouter);
 
 app.use(errorHandler);
 
