@@ -28,6 +28,14 @@ const createRequestTracking = async function name(req: any, res: any) {
       society,
 
     });
+
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "New Request",
+      message: `A new request "${requestTracking.requestName}" has been created by ${requestTracking.requesterName}.`,
+      type: "info",
+    });
+
     res.status(201).json({ requestTracking });
   } catch (error: any) {
     console.log(error);
@@ -57,6 +65,13 @@ const editRequestTracking = async function name(req: any, res: any) {
     if (!updateRequestTracking) {
       return res.status(404).json({ message: "RequestTracking not found" });
     }
+    const io = req.app.get("io");
+    io.emit("notification", {
+      title: "Request Updated",
+      message: `Request "${updateRequestTracking.requestName}" status has been updated to ${updateRequestTracking.status}.`,
+      type: "info",
+    });
+
     res.status(200).json({ updateRequestTracking });
   } catch (error: any) {
     console.log(error);
@@ -67,11 +82,11 @@ const editRequestTracking = async function name(req: any, res: any) {
 const deleteRequestTracking = async function name(req: any, res: any) {
   try {
     const id = req.params.id;
-    const deleteRequestTracking = await RequestTracking.findByIdAndDelete(id);
-    if (!deleteRequestTracking) {
+    const deletedRequest = await RequestTracking.findByIdAndDelete(id);
+    if (!deletedRequest) {
       return res.status(404).json({ message: "RequestTracking not found" });
     }
-    res.status(200).json({ deleteRequestTracking });
+    res.status(200).json({ deletedRequest });
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ message: error.message });
