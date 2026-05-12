@@ -21,6 +21,13 @@ const securityProtocolRouter = require("./routes/securityProtocol.router");
 const securityGuardRouter = require("./routes/securityGuard.router");
 const announcementRouter = require("./routes/Announcement.router");
 const visitorRouter = require("./routes/visitor.router");
+const importantNumberRouter = require("./routes/importantNumber.router");
+const dashboardRouter = require("./routes/dashboard.router");
+
+
+
+
+
 const { Server } = require("socket.io");
 const http = require("http");
 const app = express();
@@ -69,6 +76,8 @@ app.use("/api/security-protocol", securityProtocolRouter);
 app.use("/api/security-guard", securityGuardRouter);
 app.use("/api/announcement", announcementRouter);
 app.use("/api/visitor", visitorRouter);
+app.use("/api/important-number", importantNumberRouter);  
+app.use("/api/dashboard", dashboardRouter);
 
 app.use(errorHandler);
 
