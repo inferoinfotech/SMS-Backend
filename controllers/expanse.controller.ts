@@ -28,9 +28,14 @@ const addExpanse = async (req: any, res: any) => {
       data: expanse,
     });
   } catch (error: any) {
+    console.error(error);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
     return res
       .status(500)
-      .json({ message: "Internal server error: " + error.message });
+      .json({ message: error.message || "Internal server error" });
   }
 };
 
@@ -75,7 +80,10 @@ const editExpanse = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
     return res.status(500).json({
       message: error.message || "Internal server error",
     });

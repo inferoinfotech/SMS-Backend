@@ -10,7 +10,21 @@ const residentRouter = require("./routes/resident.router");
 const maintenanceRouter = require("./routes/maintenece");
 const incomeRouter = require("./routes/income");
 const logger = require("./config/logger");
-const pinoHttp = require("pino-http")({ logger });
+const pinoHttp = require("pino-http")({
+  logger,
+  serializers: {
+    req: (req: any) => ({
+      method: req.method,
+      url: req.url,
+    }),
+    res: (res: any) => ({
+      statusCode: res.statusCode,
+    }),
+    err: (err: any) => ({
+      message: err.message,
+    }),
+  },
+});
 const errorHandler = require("./middleware/error.middleware");
 const expanseRouter = require("./routes/expanse.router");
 const noteRouter = require("./routes/note.router");
@@ -25,6 +39,8 @@ const importantNumberRouter = require("./routes/importantNumber.router");
 const dashboardRouter = require("./routes/dashboard.router");
 const eventPaymentRouter = require("./routes/eventPayment.router");
 const emergencyRouter = require("./routes/emergency.router");
+const paymentRouter = require("./routes/payment.routes");
+
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -78,6 +94,8 @@ app.use("/api/important-number", importantNumberRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/event-payment", eventPaymentRouter);
 app.use("/api/emergency", emergencyRouter);
+app.use("/api/payment", paymentRouter);
+
 
 app.use(errorHandler);
 

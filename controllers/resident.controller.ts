@@ -86,6 +86,25 @@ const createResident = async (req: any, res: any) => {
     const sanitizedEmail = email === "" ? undefined : email;
     const sanitizedPhoneNumber = phoneNumber === "" ? undefined : phoneNumber;
 
+    // Parse members and vehicles if they are sent as strings (common with FormData)
+    let parsedMembers = members;
+    if (typeof members === "string" && members.trim() !== "") {
+      try {
+        parsedMembers = JSON.parse(members);
+      } catch (e) {
+        parsedMembers = [];
+      }
+    }
+
+    let parsedVehicles = vehicles;
+    if (typeof vehicles === "string" && vehicles.trim() !== "") {
+      try {
+        parsedVehicles = JSON.parse(vehicles);
+      } catch (e) {
+        parsedVehicles = [];
+      }
+    }
+
     const resident = await Auth.findOneAndUpdate(
       { wing, unit, society },
       {
@@ -105,9 +124,9 @@ const createResident = async (req: any, res: any) => {
         uploadPan,
         addressProof,
         rentAgreeMent,
-        members: members || [],
-        memberCount: members ? members.length : 1,
-        vehicles: vehicles || [],
+        members: parsedMembers || [],
+        memberCount: parsedMembers ? parsedMembers.length : 1,
+        vehicles: parsedVehicles || [],
         residentStatus,
         unitStatus: "Occupied",
         society,
@@ -195,8 +214,16 @@ const createResident = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.error(error);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `A resident with this ${field} already exists.` });
+    }
     return res.status(500).json({
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -391,6 +418,25 @@ const editResident = async (req: any, res: any) => {
     const sanitizedEmail = email === "" ? undefined : email;
     const sanitizedPhoneNumber = phoneNumber === "" ? undefined : phoneNumber;
 
+    // Parse members and vehicles if they are sent as strings
+    let parsedMembers = members;
+    if (typeof members === "string" && members.trim() !== "") {
+      try {
+        parsedMembers = JSON.parse(members);
+      } catch (e) {
+        parsedMembers = [];
+      }
+    }
+
+    let parsedVehicles = vehicles;
+    if (typeof vehicles === "string" && vehicles.trim() !== "") {
+      try {
+        parsedVehicles = JSON.parse(vehicles);
+      } catch (e) {
+        parsedVehicles = [];
+      }
+    }
+
     const resident = await Auth.findByIdAndUpdate(
       id,
       {
@@ -411,9 +457,9 @@ const editResident = async (req: any, res: any) => {
         uploadPan,
         addressProof,
         rentAgreeMent,
-        members,
+        members: parsedMembers,
         memberCount,
-        vehicles,
+        vehicles: parsedVehicles,
         residentStatus,
         unitStatus,
         society,
@@ -433,9 +479,17 @@ const editResident = async (req: any, res: any) => {
     return res
       .status(200)
       .json({ message: "Resident updated successfully", data: resident });
-  } catch (error) {
+  } catch (error: any) {
     logger.error(error);
-    res.status(500).json({ message: error });
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({ message: messages.join(", ") });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `A resident with this ${field} already exists.` });
+    }
+    res.status(500).json({ message: error.message || "Internal server error" });
   }
 };
 
