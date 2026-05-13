@@ -40,7 +40,7 @@ const dashboardRouter = require("./routes/dashboard.router");
 const eventPaymentRouter = require("./routes/eventPayment.router");
 const emergencyRouter = require("./routes/emergency.router");
 const paymentRouter = require("./routes/payment.routes");
-
+const pollRouter = require("./routes/poll.router");
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -95,7 +95,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/event-payment", eventPaymentRouter);
 app.use("/api/emergency", emergencyRouter);
 app.use("/api/payment", paymentRouter);
-
+app.use("/api/poll", pollRouter);
 
 app.use(errorHandler);
 
