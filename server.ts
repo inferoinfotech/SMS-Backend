@@ -45,6 +45,8 @@ const chatRouter = require("./routes/chat.router");
 const Chat = require("./models/chat.model");
 
 const notificationRouter = require("./routes/notification.router");
+const videoRouter = require("./routes/video.router");
+
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -75,33 +77,42 @@ io.on("connection", (socket: any) => {
   });
 
   // Handle chat messages (both Community and Personal)
-  socket.on("chat-message", async (data: { societyId: string; senderId: string; message: string; receiverId?: string }) => {
-    try {
-      // Save message to database
-      const newMessage = await Chat.create({
-        sender: data.senderId,
-        society: data.societyId,
-        message: data.message,
-        receiver: data.receiverId || null,
-      });
+  socket.on(
+    "chat-message",
+    async (data: {
+      societyId: string;
+      senderId: string;
+      message: string;
+      receiverId?: string;
+    }) => {
+      try {
+        // Save message to database
+        const newMessage = await Chat.create({
+          sender: data.senderId,
+          society: data.societyId,
+          message: data.message,
+          receiver: data.receiverId || null,
+        });
 
-      // Populate sender info for the frontend
-      const populatedMessage = await Chat.findById(newMessage._id).populate(
-        "sender",
-        "name firstname lastname profileImage"
-      );
+        // Populate sender info for the frontend
+        const populatedMessage = await Chat.findById(newMessage._id)
+          .populate("sender", "name firstname lastname profileImage")
+          .populate("receiver", "name firstname lastname profileImage");
 
-      if (data.receiverId) {
-        // Personal (1-to-1) Message: Emit only to sender and receiver
-        io.to(data.receiverId).to(data.senderId).emit("new-message", populatedMessage);
-      } else {
-        // Community Forum Message: Broadcast to everyone in the society room
-        io.to(data.societyId).emit("new-message", populatedMessage);
+        if (data.receiverId) {
+          // Personal (1-to-1) Message: Emit only to sender and receiver
+          io.to(data.receiverId)
+            .to(data.senderId)
+            .emit("new-message", populatedMessage);
+        } else {
+          // Community Forum Message: Broadcast to everyone in the society room
+          io.to(data.societyId).emit("new-message", populatedMessage);
+        }
+      } catch (error) {
+        console.error("Socket Chat Error:", error);
       }
-    } catch (error) {
-      console.error("Socket Chat Error:", error);
-    }
-  });
+    },
+  );
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
@@ -144,6 +155,8 @@ app.use("/api/poll", pollRouter);
 app.use("/api/chat", chatRouter);
 
 app.use("/api/notification", notificationRouter);
+app.use("/api/video", videoRouter);
+
 
 app.use(errorHandler);
 
