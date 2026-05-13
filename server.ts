@@ -41,6 +41,7 @@ const eventPaymentRouter = require("./routes/eventPayment.router");
 const emergencyRouter = require("./routes/emergency.router");
 const paymentRouter = require("./routes/payment.routes");
 const pollRouter = require("./routes/poll.router");
+const notificationRouter = require("./routes/notification.router");
 
 const { Server } = require("socket.io");
 const http = require("http");
@@ -96,6 +97,7 @@ app.use("/api/event-payment", eventPaymentRouter);
 app.use("/api/emergency", emergencyRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/poll", pollRouter);
+app.use("/api/notification", notificationRouter);
 
 app.use(errorHandler);
 
