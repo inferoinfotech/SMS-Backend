@@ -46,6 +46,7 @@ const Chat = require("./models/chat.model");
 
 const notificationRouter = require("./routes/notification.router");
 const videoRouter = require("./routes/video.router");
+const discussionRouter = require("./routes/community-discussion.router");
 
 
 const { Server } = require("socket.io");
@@ -175,6 +176,7 @@ app.use("/api/chat", chatRouter);
 
 app.use("/api/notification", notificationRouter);
 app.use("/api/video", videoRouter);
+app.use("/api/discussion", discussionRouter);
 
 
 app.use(errorHandler);
