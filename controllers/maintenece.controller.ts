@@ -26,8 +26,8 @@ const maintenanceSetup = async (req: any, res: any) => {
     // 1. Create or update the maintenance setup for this society
     // We try to find if there's already a setup for this society with the same due date (same month/year)
     const dueDate = new Date(maintenanceDueDate);
-    const startOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
-    const endOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0);
+    const startOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
     let setup = await MaintenanceSetting.findOne({
       society,
@@ -58,16 +58,26 @@ const maintenanceSetup = async (req: any, res: any) => {
         // Check if a maintenance record already exists for this resident in this month
         const existingRecord = await Maintenance.findOne({
           resident: resident._id,
+          society: society,
           date: { $gte: startOfMonth, $lte: endOfMonth }
         });
 
+        const now = new Date();
+        const dueDate = new Date(maintenanceDueDate);
+        const penaltyDate = new Date(dueDate);
+        penaltyDate.setDate(penaltyDate.getDate() + penaltyAppliedAfterDay);
+
+        const calculatedStatus = now > dueDate ? "Due" : "Pending";
+        const calculatedPenalty = now > penaltyDate ? penaltyAmount : 0;
+
         if (existingRecord) {
-          // If it exists and is Pending, update it with the new amount and setup details
-          if (existingRecord.status === "Pending") {
+          // If it exists and is not Paid, update it with the new amount and setup details
+          if (existingRecord.status !== "Paid") {
             existingRecord.maintenanceSetup = setup._id;
             existingRecord.amount = maintenanceAmount;
             existingRecord.date = maintenanceDueDate;
-            // Penalty logic can be handled here or during fetch
+            existingRecord.status = calculatedStatus;
+            existingRecord.penalty = calculatedPenalty;
             await existingRecord.save();
           }
           return existingRecord;
@@ -83,8 +93,8 @@ const maintenanceSetup = async (req: any, res: any) => {
             phoneNumber: resident.phoneNumber || "N/A",
             date: maintenanceDueDate,
             amount: maintenanceAmount,
-            penalty: 0,
-            status: "Pending",
+            penalty: calculatedPenalty,
+            status: calculatedStatus,
             payment: "Cash",
             society: society,
           });
@@ -154,6 +164,10 @@ const createMaintenance = async (req: any, res: any) => {
     const rawStatus = residentObj.residentStatus || residentObj.ResidentStatus || "Tenant";
     const validStatus = ["Owner", "Tenant"].includes(rawStatus) ? rawStatus : "Tenant";
 
+    const now = new Date();
+    const dueDate = new Date(date);
+    const calculatedStatus = status || (now > dueDate ? "Due" : "Pending");
+
     const newMaintenance = await Maintenance.create({
       resident,
       maintenanceSetup,
@@ -164,9 +178,9 @@ const createMaintenance = async (req: any, res: any) => {
       phoneNumber: residentObj.phoneNumber || "N/A",
       date,
       amount,
-      penalty,
+      penalty: penalty || 0,
       payment,
-      status,
+      status: calculatedStatus,
       society: residentObj.society, // Use society from resident record
     });
     return res
@@ -216,6 +230,43 @@ const getMaintenance = async (req: any, res: any) => {
         query.society = { $in: societyIds };
       } else {
         return res.status(200).json({ data: [] });
+      }
+    }
+
+    // Refresh statuses and penalties for unpaid records to ensure they are current
+    const now = new Date();
+    
+    // Efficiently update basic statuses first
+    await Maintenance.updateMany(
+      { status: "Pending", date: { $lt: now }, ...query },
+      { $set: { status: "Due" } }
+    );
+    await Maintenance.updateMany(
+      { status: "Due", date: { $gt: now }, ...query },
+      { $set: { status: "Pending" } }
+    );
+
+    // Fetch and dynamically update penalties if needed
+    // This part ensures that if the grace period has passed, the penalty is applied.
+    const unpaidRecords = await Maintenance.find({
+      ...query,
+      status: { $in: ["Pending", "Due"] }
+    }).populate("maintenanceSetup");
+
+    for (const record of unpaidRecords) {
+      if (record.maintenanceSetup) {
+        const dueDate = new Date(record.date);
+        const penaltyDate = new Date(dueDate);
+        penaltyDate.setDate(penaltyDate.getDate() + record.maintenanceSetup.penaltyAppliedAfterDay);
+        
+        const targetPenalty = now > penaltyDate ? record.maintenanceSetup.penaltyAmount : 0;
+        
+        if (record.penalty !== targetPenalty) {
+          await Maintenance.updateOne(
+            { _id: record._id },
+            { $set: { penalty: targetPenalty } }
+          );
+        }
       }
     }
 

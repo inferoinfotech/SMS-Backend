@@ -47,7 +47,7 @@ const MaintenanceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Paid", "Pending"],
+      enum: ["Paid", "Pending","Due"],
       default: "Pending",
     },
     payment: {
