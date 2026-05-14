@@ -59,10 +59,12 @@ const getSocietyMembers = async (req: any, res: any) => {
       return res.status(400).json({ success: false, message: "Society ID is required" });
     }
 
-    // Find all users in the same society, excluding the current user
+    // Find all users in the same society, excluding the current user, guards, and blank users
     const members = await Auth.find({ 
       society: societyId, 
-      _id: { $ne: userId } 
+      _id: { $ne: userId },
+      role: { $ne: "guard" },
+      firstname: { $exists: true, $ne: "" }
     }).select("name firstname lastname profileImage role residentStatus wing unit");
 
     return res.status(200).json({ success: true, members });

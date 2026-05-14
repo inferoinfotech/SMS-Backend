@@ -24,6 +24,10 @@ const ChatSchema = new mongoose.Schema(
       ref: "Auth",
       default: null,
     },
+    tempId: {
+      type: String,
+      default: null
+    }
   },
   { timestamps: true },
 );

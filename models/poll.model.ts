@@ -7,6 +7,10 @@ const PollSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    description: {
+      type: String,
+      trim: true,
+    },
     pollType: {
       type: String,
       enum: ["Multichoice", "Ranking", "Rating", "Numeric", "Text"],
@@ -26,6 +30,15 @@ const PollSchema = new mongoose.Schema(
       type: Number,
       default: 5,
     },
+    minValue: {
+      type: Number,
+    },
+    maxValue: {
+      type: Number,
+    },
+    unit: {
+      type: String,
+    },
     society: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Society",
@@ -36,20 +49,18 @@ const PollSchema = new mongoose.Schema(
       ref: "Auth",
       required: true,
     },
-
     dueDate: {
       type: Date,
     },
     status: {
       type: String,
-      enum: ["Active", "Closed"],
+      enum: ["Active", "Closed", "Inactive"],
       default: "Active",
     },
-
     voters: [
       {
         user: { type: mongoose.Schema.Types.ObjectId, ref: "Auth" },
-        choices: [{ type: String }],
+        choices: [{ type: String }], // For Multichoice
         votedAt: { type: Date, default: Date.now },
       },
     ],

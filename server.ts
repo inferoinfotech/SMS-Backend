@@ -84,6 +84,7 @@ io.on("connection", (socket: any) => {
       senderId: string;
       message: string;
       receiverId?: string;
+      tempId?: string;
     }) => {
       try {
         // Save message to database
@@ -92,6 +93,7 @@ io.on("connection", (socket: any) => {
           society: data.societyId,
           message: data.message,
           receiver: data.receiverId || null,
+          tempId: data.tempId || null,
         });
 
         // Populate sender info for the frontend
@@ -113,6 +115,23 @@ io.on("connection", (socket: any) => {
       }
     },
   );
+
+  // Typing Indicators
+  socket.on("typing", (data: { societyId: string; senderId: string; receiverId?: string }) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).emit("user-typing", { senderId: data.senderId, receiverId: data.receiverId });
+    } else {
+      socket.to(data.societyId).emit("user-typing", { senderId: data.senderId, isCommunity: true });
+    }
+  });
+
+  socket.on("stop-typing", (data: { societyId: string; senderId: string; receiverId?: string }) => {
+    if (data.receiverId) {
+      io.to(data.receiverId).emit("user-stop-typing", { senderId: data.senderId, receiverId: data.receiverId });
+    } else {
+      socket.to(data.societyId).emit("user-stop-typing", { senderId: data.senderId, isCommunity: true });
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);

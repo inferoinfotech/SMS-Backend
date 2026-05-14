@@ -2,10 +2,12 @@
 import { StreamChat } from "stream-chat";
 import { Request, Response } from "express";
 
-const serverClient = StreamChat.getInstance(
-  process.env.STREAM_API_KEY!,
-  process.env.STREAM_SECRET!
-);
+const streamApiKey = process.env.STREAM_API_KEY;
+const streamSecret = process.env.STREAM_SECRET;
+
+const serverClient = (streamApiKey && streamSecret) 
+  ? StreamChat.getInstance(streamApiKey, streamSecret)
+  : null;
 
 export const generateToken = async (
   req: Request,
@@ -13,6 +15,13 @@ export const generateToken = async (
 ) => {
   try {
     const { userId } = req.body;
+
+    if (!serverClient) {
+      return res.status(400).json({
+        success: false,
+        message: "Stream Video is not configured on the server. Please add STREAM_API_KEY and STREAM_SECRET to .env",
+      });
+    }
 
     const token = serverClient.createToken(userId);
 
