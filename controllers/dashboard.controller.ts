@@ -3,6 +3,7 @@ const Income = require("../models/income.model");
 const Expanse = require("../models/expanse.model");
 const Auth = require("../models/auth.model");
 const Society = require("../models/society.model");
+const EventPayment = require("../models/eventPayment.model");
 
 const getDashboardStats = async (req: any, res: any) => {
   try {
@@ -44,6 +45,10 @@ const getDashboardStats = async (req: any, res: any) => {
     // 1. Total Income from Maintenance (Paid only)
     const maintenanceIncome = await Maintenance.aggregate([
       { $match: { society: { $in: societyIds }, status: "Paid" } },
+      { $group: { _id: null, total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] } } } },
+    ]);
+    const eventPayment = await EventPayment.aggregate([
+      { $match: { society: { $in: societyIds }, status: "Paid" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
@@ -65,7 +70,7 @@ const getDashboardStats = async (req: any, res: any) => {
       role: "resident",
     });
 
-    const incomeTotal = (maintenanceIncome[0]?.total || 0) + (otherIncome[0]?.total || 0);
+    const incomeTotal = (maintenanceIncome[0]?.total || 0 ) + (eventPayment[0]?.total || 0) + (otherIncome[0]?.total || 0);
     const expenseTotal = totalExpenses[0]?.total || 0;
     const balanceTotal = incomeTotal - expenseTotal;
 
