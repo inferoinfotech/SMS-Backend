@@ -5,38 +5,49 @@ const {
 
 const createDiscussion = async (req: any, res: any) => {
   try {
-    const { question, description, society, user } = req.body;
+    const { title, question, content, description, society } = req.body;
+    
     const discussion = new CommunityDiscussion({
-      question,
-      description,
-      society,
-      user,
+      question: question || title,
+      description: description || content,
+      society: society || req.user.society,
+      user: req.user.id,
     });
+
     await discussion.save();
-    return res
-      .status(201)
-      .json({
-        success: true,
-        message: "Discussion created successfully",
-        discussion,
-      });
+    return res.status(201).json({
+      success: true,
+      message: "Discussion created successfully",
+      discussion,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 const getAllDiscussions = async (req: any, res: any) => {
   try {
-    const society = req.user.society;
-    const discussions = await CommunityDiscussion.find({ society }).populate(
-      "user",
-      "firstname lastname profileImage",
+    const society = req.user.society || req.query.societyId;
+    
+    // Fetch discussions
+    const discussions = await CommunityDiscussion.find({ society })
+      .populate("user", "firstname lastname profileImage")
+      .sort({ createdAt: -1 });
+
+    // Map discussions to include answersCount
+    const discussionsWithCounts = await Promise.all(
+      discussions.map(async (d: any) => {
+        const answersCount = await DiscussionAnswer.countDocuments({ discussionId: d._id });
+        return {
+          ...d.toObject(),
+          answersCount,
+          title: d.question,
+          content: d.description
+        };
+      })
     );
-    if (!discussions) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No discussions found" });
-    }
-    return res.status(200).json({ success: true, discussions });
+
+    return res.status(200).json({ success: true, discussions: discussionsWithCounts });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -45,15 +56,10 @@ const getAllDiscussions = async (req: any, res: any) => {
 const getAnswers = async (req: any, res: any) => {
   try {
     const { discussionId } = req.body;
-    const answers = await DiscussionAnswer.find({ discussionId }).populate(
-      "author",
-      "firstname lastname profileImage",
-    );
-    if (!answers) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No answers found" });
-    }
+    const answers = await DiscussionAnswer.find({ discussionId })
+      .populate("author", "firstname lastname profileImage")
+      .sort({ createdAt: 1 });
+
     return res.status(200).json({ success: true, answers });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
@@ -62,76 +68,89 @@ const getAnswers = async (req: any, res: any) => {
 
 const createAnswer = async (req: any, res: any) => {
   try {
-    const { discussionId, content, author } = req.body;
-    const answer = new DiscussionAnswer({ discussionId, content, author });
+    const { discussionId, content } = req.body;
+    if (!discussionId || !content) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const answer = new DiscussionAnswer({ 
+      discussionId, 
+      content, 
+      author: req.user.id 
+    });
+    
     await answer.save();
-    return res
-      .status(201)
-      .json({ success: true, message: "Answer created successfully", answer });
+    
+    const populatedAnswer = await DiscussionAnswer.findById(answer._id)
+      .populate("author", "firstname lastname profileImage");
+
+    return res.status(201).json({ 
+      success: true, 
+      message: "Answer created successfully", 
+      answer: populatedAnswer 
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-// 1. Toggle Vote for a Discussion
+
 const toggleVoteDiscussion = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const discussion = await CommunityDiscussion.findById(id);
-    if (!discussion)
-      return res
-        .status(404)
-        .json({ success: false, message: "Discussion not found" });
+    if (!discussion) {
+      return res.status(404).json({ success: false, message: "Discussion not found" });
+    }
 
     const isVoted = discussion.votes.includes(userId);
-
     if (isVoted) {
-      // Unvote
       discussion.votes = discussion.votes.filter(
-        (v: any) => v.toString() !== userId.toString(),
+        (v: any) => v && v.toString() !== userId.toString()
       );
     } else {
-      // Vote
       discussion.votes.push(userId);
     }
 
     await discussion.save();
-    return res
-      .status(200)
-      .json({
-        success: true,
-        votesCount: discussion.votes.length,
-        isVoted: !isVoted,
-      });
+    return res.status(200).json({
+      success: true,
+      votesCount: discussion.votes.length,
+      isVoted: !isVoted,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// 2. Get Single Discussion with Details
 const getDiscussionById = async (req: any, res: any) => {
   try {
     const { id } = req.params;
 
-    // Find discussion and increment views
     const discussion = await CommunityDiscussion.findByIdAndUpdate(
       id,
       { $inc: { views: 1 } },
-      { new: true },
+      { new: true }
     ).populate("user", "firstname lastname profileImage");
 
-    if (!discussion)
-      return res
-        .status(404)
-        .json({ success: false, message: "Discussion not found" });
+    if (!discussion) {
+      return res.status(404).json({ success: false, message: "Discussion not found" });
+    }
 
-    // Get all answers for this discussion
     const answers = await DiscussionAnswer.find({ discussionId: id })
       .populate("author", "firstname lastname profileImage")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: 1 });
 
-    return res.status(200).json({ success: true, discussion, answers });
+    return res.status(200).json({ 
+      success: true, 
+      discussion: {
+        ...discussion.toObject(),
+        title: discussion.question,
+        content: discussion.description
+      }, 
+      answers 
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -140,32 +159,28 @@ const getDiscussionById = async (req: any, res: any) => {
 const toggleVoteAnswer = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
 
     const answer = await DiscussionAnswer.findById(id);
-    if (!answer)
-      return res
-        .status(404)
-        .json({ success: false, message: "Answer not found" });
+    if (!answer) {
+      return res.status(404).json({ success: false, message: "Answer not found" });
+    }
 
     const isVoted = answer.votes.includes(userId);
-
     if (isVoted) {
       answer.votes = answer.votes.filter(
-        (v: any) => v.toString() !== userId.toString(),
+        (v: any) => v && v.toString() !== userId.toString()
       );
     } else {
       answer.votes.push(userId);
     }
 
     await answer.save();
-    return res
-      .status(200)
-      .json({
-        success: true,
-        votesCount: answer.votes.length,
-        isVoted: !isVoted,
-      });
+    return res.status(200).json({
+      success: true,
+      votesCount: answer.votes.length,
+      isVoted: !isVoted,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }

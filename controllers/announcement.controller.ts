@@ -2,7 +2,7 @@ const Announcement = require("../models/announcement.model");
 
 const createAnnouncement = async function (req: any, res: any) {
   try {
-    const { title, description, announcementType, date, time,society  } = req.body;
+    const { title, description, announcementType, date, time, society, amount } = req.body;
     if (!title || !description || !announcementType || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -12,7 +12,8 @@ const createAnnouncement = async function (req: any, res: any) {
       announcementType,
       date,
       time,
-      society
+      society,
+      amount
     });
     const io = req.app.get("io");
     io.emit("notification", {
@@ -31,13 +32,14 @@ const createAnnouncement = async function (req: any, res: any) {
 const editAnnouncement = async function(req:any, res:any) {
     try {
         const id = req.params.id;
-        const { title, description,announcementType,date,time  } = req.body;
+        const { title, description, announcementType, date, time, amount } = req.body;
         const announcement = await Announcement.findByIdAndUpdate(id, {
             title,
             description,
             announcementType,
             date,
             time,
+            amount
         }, { new: true });
     const io = req.app.get("io");
     io.emit("notification", {

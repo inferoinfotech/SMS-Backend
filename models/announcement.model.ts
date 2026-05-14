@@ -30,6 +30,9 @@ const announcementSchema = new mongoose.Schema({
     ref: "Society",
     required: true,
   },
+  amount: {
+    type: Number,
+  },
 });
 
 module.exports = mongoose.model("Announcement", announcementSchema);
