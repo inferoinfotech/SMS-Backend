@@ -74,4 +74,30 @@ const getSocietyMembers = async (req: any, res: any) => {
   }
 };
 
-module.exports = { getChatHistory, getPersonalChatHistory, getSocietyMembers };
+const uploadFile = async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+
+    let fileType = "image";
+    if (req.file.mimetype.includes("pdf")) fileType = "pdf";
+    else if (req.file.mimetype.includes("audio")) fileType = "audio";
+
+    return res.status(200).json({
+      success: true,
+      fileUrl: req.file.path,
+      fileType: fileType,
+    });
+  } catch (error: any) {
+    console.error("Chat Upload Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { 
+  getChatHistory, 
+  getPersonalChatHistory, 
+  getSocietyMembers,
+  uploadFile
+};

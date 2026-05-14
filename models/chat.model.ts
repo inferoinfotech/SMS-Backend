@@ -14,8 +14,17 @@ const ChatSchema = new mongoose.Schema(
     },
     message: {
       type: String,
-      required: true,
+      required: function (this: any) { return !this.fileUrl; },
       trim: true,
+    },
+    fileUrl: {
+      type: String,
+      default: null,
+    },
+    fileType: {
+      type: String,
+      enum: ["image", "pdf", "audio", null],
+      default: null,
     },
     // If receiver is null, it's a Community Forum message.
     // If receiver is present, it's a Personal (1-to-1) message.

@@ -86,6 +86,8 @@ io.on("connection", (socket: any) => {
       message: string;
       receiverId?: string;
       tempId?: string;
+      fileUrl?: string;
+      fileType?: string;
     }) => {
       try {
         // Save message to database
@@ -95,6 +97,8 @@ io.on("connection", (socket: any) => {
           message: data.message,
           receiver: data.receiverId || null,
           tempId: data.tempId || null,
+          fileUrl: data.fileUrl || null,
+          fileType: data.fileType || null,
         });
 
         // Populate sender info for the frontend
