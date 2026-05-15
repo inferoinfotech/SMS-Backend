@@ -396,6 +396,7 @@ const editResident = async (req: any, res: any) => {
       residentStatus,
       unitStatus,
       society,
+      password,
     } = req.body;
 
     // Handle Cloudinary URLs from files
@@ -437,6 +438,34 @@ const editResident = async (req: any, res: any) => {
       }
     }
 
+    const oldResident = await Auth.findById(id);
+    if (!oldResident) {
+      return res.status(404).json({ message: "Resident not found" });
+    }
+
+    // Handle password update
+    let hashedPassword = oldResident.password;
+    if (password && password.trim() !== "") {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    // Handle email change and notification
+    if (sanitizedEmail && sanitizedEmail !== oldResident.email) {
+      const token = jwt.sign({ id: oldResident._id }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+      const setupPassword = await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: sanitizedEmail,
+        subject: "Update your password for SMS",
+        html: `<p>Your email has been updated. Click on the link below to set your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+      });
+
+      if (!setupPassword) {
+        console.log("Email not sent");
+      }
+    }
+
     const resident = await Auth.findByIdAndUpdate(
       id,
       {
@@ -444,6 +473,7 @@ const editResident = async (req: any, res: any) => {
         lastname,
         name,
         email: sanitizedEmail,
+        password: hashedPassword,
         age,
         gender,
         wing,
