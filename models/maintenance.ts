@@ -53,7 +53,9 @@ const MaintenanceSchema = new mongoose.Schema(
     payment: {
       type: String,
       enum: ["Cash", "Online", "Cheque", "UPI"],
-      required: true,
+    },
+    paymentDate: {
+      type: Date,
     },
     society: {
       type: mongoose.Schema.Types.ObjectId,

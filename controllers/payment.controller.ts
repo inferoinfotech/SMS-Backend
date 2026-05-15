@@ -52,6 +52,8 @@ export const verifyPayment = async (req: Request, res: Response) => {
         await Maintenance.findByIdAndUpdate(recordId, {
           status: "Paid",
           payment: "Online",
+          paymentDate: new Date(),
+
         });
       }
 
