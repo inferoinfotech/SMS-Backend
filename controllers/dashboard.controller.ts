@@ -74,11 +74,87 @@ const getDashboardStats = async (req: any, res: any) => {
     const expenseTotal = totalExpenses[0]?.total || 0;
     const balanceTotal = incomeTotal - expenseTotal;
 
+    // 5. Monthly Income (for chart)
+    const currentYear = new Date().getFullYear();
+    const monthlyIncomeData = await Maintenance.aggregate([
+      { 
+        $match: { 
+          society: { $in: societyIds }, 
+          status: "Paid",
+          date: { 
+            $gte: new Date(currentYear, 0, 1), 
+            $lte: new Date(currentYear, 11, 31) 
+          } 
+        } 
+      },
+      {
+        $group: {
+          _id: { $month: "$date" },
+          total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] } }
+        }
+      }
+    ]);
+
+    const otherMonthlyIncome = await Income.aggregate([
+      { 
+        $match: { 
+          society: { $in: societyIds },
+          date: { 
+            $gte: new Date(currentYear, 0, 1), 
+            $lte: new Date(currentYear, 11, 31) 
+          } 
+        } 
+      },
+      {
+        $group: {
+          _id: { $month: "$date" },
+          total: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const eventMonthlyIncome = await EventPayment.aggregate([
+      { 
+        $match: { 
+          society: { $in: societyIds },
+          status: "Paid",
+          createdAt: { 
+            $gte: new Date(currentYear, 0, 1), 
+            $lte: new Date(currentYear, 11, 31) 
+          } 
+        } 
+      },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          total: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    const monthlyIncome = new Array(12).fill(0);
+    monthlyIncomeData.forEach((item: any) => {
+      if (item._id >= 1 && item._id <= 12) {
+        monthlyIncome[item._id - 1] += item.total;
+      }
+    });
+    otherMonthlyIncome.forEach((item: any) => {
+      if (item._id >= 1 && item._id <= 12) {
+        monthlyIncome[item._id - 1] += item.total;
+      }
+    });
+    eventMonthlyIncome.forEach((item: any) => {
+      if (item._id >= 1 && item._id <= 12) {
+        monthlyIncome[item._id - 1] += item.total;
+      }
+    });
+
     return res.status(200).json({
       totalBalance: balanceTotal,
       totalIncome: incomeTotal,
       totalExpense: expenseTotal,
       totalUnit: totalUnits,
+      monthlyIncome: monthlyIncome
     });
   } catch (error: any) {
     return res.status(500).json({ message: "Internal server error: " + error.message });
