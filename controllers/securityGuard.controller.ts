@@ -95,12 +95,7 @@ const createSecurityGuard = async function (req: any, res: any) {
       setuplink,
     });
 
-    const io = req.app.get("io");
-    io.emit("notification", {
-      title: "New Security Guard",
-      message: `A new security guard "${securityGuard.name}" has been registered.`,
-      type: "success",
-    });
+
 
   } catch (error: any) {
     console.log(error);
@@ -151,12 +146,7 @@ const editSecurityGuard = async function (req: any, res: any) {
       return res.status(404).json({ message: "Security guard not found" });
     }
 
-    const io = req.app.get("io");
-    io.emit("notification", {
-      title: "Guard Updated",
-      message: `Security guard "${securityGuard.name}" details have been updated.`,
-      type: "info",
-    });
+
 
     res.status(200).json({ securityGuard });
   } catch (error: any) {
@@ -173,12 +163,7 @@ const deleteSecurityGuard = async function (req: any, res: any) {
       return res.status(404).json({ message: "Security guard not found" });
     }
 
-    const io = req.app.get("io");
-    io.emit("notification", {
-      title: "Guard Deleted",
-      message: `Security guard "${securityGuard.name}" has been removed.`,
-      type: "warning",
-    });
+
 
     res.status(200).json({ message: "Security guard deleted successfully" });
   } catch (error: any) {
