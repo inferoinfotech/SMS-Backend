@@ -138,6 +138,17 @@ io.on("connection", (socket: any) => {
     }
   });
 
+  // Video/Audio Calling Signaling
+  socket.on("call:incoming", (data: { to: string; from: string; callId: string; type: string }) => {
+    console.log(`[Socket] Personal call from ${data.from} to ${data.to}: ${data.callId}`);
+    io.to(data.to).emit("call:incoming", data);
+  });
+
+  socket.on("call:community-incoming", (data: { societyId: string; from: string; callId: string; type: string }) => {
+    console.log(`[Socket] Community call from ${data.from} in society ${data.societyId}`);
+    socket.to(data.societyId).emit("call:incoming", data);
+  });
+
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
   });
