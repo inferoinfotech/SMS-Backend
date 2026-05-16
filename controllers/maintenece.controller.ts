@@ -11,6 +11,7 @@ const maintenanceSetup = async (req: any, res: any) => {
       maintenanceDueDate,
       penaltyAppliedAfterDay,
       society, // Link to society
+      paymentMethod,
     } = req.body;
 
     if (
@@ -78,6 +79,7 @@ const maintenanceSetup = async (req: any, res: any) => {
             existingRecord.date = maintenanceDueDate;
             existingRecord.status = calculatedStatus;
             existingRecord.penalty = calculatedPenalty;
+            existingRecord.payment = paymentMethod || "Online";
             await existingRecord.save();
           }
           return existingRecord;
@@ -95,7 +97,7 @@ const maintenanceSetup = async (req: any, res: any) => {
             amount: maintenanceAmount,
             penalty: calculatedPenalty,
             status: calculatedStatus,
-            payment: "Cash",
+            payment: paymentMethod || "Online",
             society: society,
           });
         }
@@ -287,4 +289,28 @@ const getMaintenance = async (req: any, res: any) => {
   }
 };
 
-module.exports = { maintenanceSetup, createMaintenance, getMaintenance ,verifyPassword};
+const updateMaintenanceStatus = async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { status, payment } = req.body;
+
+    const maintenance = await Maintenance.findByIdAndUpdate(
+      id,
+      { status, payment },
+      { new: true }
+    );
+
+    if (!maintenance) {
+      return res.status(404).json({ message: "Maintenance record not found" });
+    }
+
+    return res.status(200).json({
+      message: "Maintenance status updated successfully",
+      data: maintenance,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ message: "Internal server error: " + error.message });
+  }
+};
+
+module.exports = { maintenanceSetup, createMaintenance, getMaintenance ,verifyPassword, updateMaintenanceStatus};

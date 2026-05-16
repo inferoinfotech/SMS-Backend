@@ -4,7 +4,7 @@ const Announcement = require("../models/announcement.model");
 
 const createEventPayment = async (req: any, res: any) => {
   try {
-    const { event, resident, amount, payment, society } = req.body;
+    const { event, resident, amount, payment, society, status } = req.body;
 
     if (!event || !resident || !amount || !payment || !society) {
       return res.status(400).json({ message: "All fields are required" });
@@ -16,6 +16,7 @@ const createEventPayment = async (req: any, res: any) => {
       amount,
       payment,
       society,
+      status: status || "Pending",
     });
 
     const io = req.app.get("io");
