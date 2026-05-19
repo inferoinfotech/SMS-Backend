@@ -65,6 +65,14 @@ const authSchema = new mongoose.Schema(
     age: { type: Number },
     gender: { type: String, enum: ["male", "female", "other"] },
     relation: { type: String },
+    ownerName: { type: String },
+    ownerPhone: { type: String },
+    ownerAddress: { type: String },
+    uploadAadharfront: { type: String },
+    uploadAadharback: { type: String },
+    uploadPan: { type: String },
+    addressProof: { type: String },
+    rentAgreeMent: { type: String },
     members: [memberSchema],
     vehicles: [
       {
