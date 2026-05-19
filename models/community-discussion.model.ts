@@ -8,6 +8,7 @@ const communityDiscussionSchema = new mongoose.Schema(
     // Use an array of User IDs to track who voted (prevents double voting)
     votes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Auth" }],
     views: { type: Number, default: 0 },
+    viewers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Auth" }],
     society: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Society",

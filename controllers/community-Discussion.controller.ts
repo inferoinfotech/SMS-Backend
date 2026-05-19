@@ -127,15 +127,32 @@ const toggleVoteDiscussion = async (req: any, res: any) => {
 const getDiscussionById = async (req: any, res: any) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id || req.user._id;
 
-    const discussion = await CommunityDiscussion.findByIdAndUpdate(
-      id,
-      { $inc: { views: 1 } },
-      { new: true }
-    ).populate("user", "firstname lastname profileImage");
-
-    if (!discussion) {
+    // Check if the discussion exists and if the user has already viewed it
+    let discussionDoc = await CommunityDiscussion.findById(id);
+    if (!discussionDoc) {
       return res.status(404).json({ success: false, message: "Discussion not found" });
+    }
+
+    const viewersList = discussionDoc.viewers || [];
+    const hasViewed = viewersList.some(
+      (v: any) => v && v.toString() === userId.toString()
+    );
+
+    let discussion;
+    if (!hasViewed) {
+      discussion = await CommunityDiscussion.findByIdAndUpdate(
+        id,
+        {
+          $addToSet: { viewers: userId },
+          $inc: { views: 1 }
+        },
+        { new: true }
+      ).populate("user", "firstname lastname profileImage");
+    } else {
+      discussion = await CommunityDiscussion.findById(id)
+        .populate("user", "firstname lastname profileImage");
     }
 
     const answers = await DiscussionAnswer.find({ discussionId: id })
