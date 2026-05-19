@@ -4,7 +4,6 @@ const transporter = require("../utils/nodemailer/transporter");
 require("dotenv").config();
 const Society = require("../models/society.model");
 
-
 const createSecurityGuard = async function (req: any, res: any) {
   try {
     const files = req.files as { [fieldname: string]: any[] } | undefined;
@@ -21,7 +20,8 @@ const createSecurityGuard = async function (req: any, res: any) {
 
     // Handle uploaded files
     const profileImage = files?.profileImage?.[0]?.path || "";
-    const uploadAadhar = files?.uploadAadhar?.[0]?.path || req.body.uploadAadhar || "";
+    const uploadAadhar =
+      files?.uploadAadhar?.[0]?.path || req.body.uploadAadhar || "";
 
     if (
       !fullName ||
@@ -76,12 +76,12 @@ const createSecurityGuard = async function (req: any, res: any) {
 
     <p>Click below to set your password:</p>
 
-    <a href="${process.env.FRONTEND_URL}/setup-password/${token}">
+    <a href="${process.env.FRONTEND_URL}/security-guard/create-password/${token}">
       Set Password
     </a>
   `,
     });
-    const setuplink = `${process.env.FRONTEND_URL}/setup-password/${token}`;
+    const setuplink = `${process.env.FRONTEND_URL}/security-guard/create-password/${token}`;
 
     // await client.messages.create({
     //   body: `Setup your password: ${setuplink}`,
@@ -94,9 +94,6 @@ const createSecurityGuard = async function (req: any, res: any) {
       securityGuard,
       setuplink,
     });
-
-
-
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ message: error.message });
@@ -107,14 +104,8 @@ const editSecurityGuard = async function (req: any, res: any) {
   try {
     const id = req.params.id;
     const files = req.files as { [fieldname: string]: any[] } | undefined;
-    const {
-      fullName,
-      phoneNumber,
-      shift,
-      gender,
-      shiftDate,
-      shiftTime,
-    } = req.body;
+    const { fullName, phoneNumber, shift, gender, shiftDate, shiftTime } =
+      req.body;
 
     const updateData: any = {
       name: fullName,
@@ -128,7 +119,8 @@ const editSecurityGuard = async function (req: any, res: any) {
     if (fullName) {
       const nameParts = (fullName || "").trim().split(" ");
       updateData.firstname = nameParts[0] || fullName || "";
-      updateData.lastname = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
+      updateData.lastname =
+        nameParts.length > 1 ? nameParts.slice(1).join(" ") : "-";
     }
 
     // Update files if new ones are uploaded
@@ -141,12 +133,12 @@ const editSecurityGuard = async function (req: any, res: any) {
       updateData.uploadAadhar = req.body.uploadAadhar;
     }
 
-    const securityGuard = await Auth.findByIdAndUpdate(id, updateData, { new: true });
+    const securityGuard = await Auth.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
     if (!securityGuard) {
       return res.status(404).json({ message: "Security guard not found" });
     }
-
-
 
     res.status(200).json({ securityGuard });
   } catch (error: any) {
@@ -162,8 +154,6 @@ const deleteSecurityGuard = async function (req: any, res: any) {
     if (!securityGuard) {
       return res.status(404).json({ message: "Security guard not found" });
     }
-
-
 
     res.status(200).json({ message: "Security guard deleted successfully" });
   } catch (error: any) {
@@ -184,7 +174,11 @@ const getAllSecurityGuard = async function (req: any, res: any) {
       } else {
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ securityGuard: [] });
         }
         const societies = await Society.find({
@@ -196,7 +190,9 @@ const getAllSecurityGuard = async function (req: any, res: any) {
     } else if (role === "resident") {
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
