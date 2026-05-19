@@ -67,7 +67,17 @@ const getSocietyMembers = async (req: any, res: any) => {
       firstname: { $exists: true, $ne: "" }
     }).select("name firstname lastname profileImage role residentStatus wing unit");
 
-    return res.status(200).json({ success: true, members });
+    const io = req.app.get("io");
+    const membersWithStatus = members.map((m: any) => {
+      const userRoom = io ? io.sockets.adapter.rooms.get(String(m._id)) : null;
+      const isOnline = userRoom && userRoom.size > 0;
+      return {
+        ...m.toObject(),
+        status: isOnline ? "online" : "offline"
+      };
+    });
+
+    return res.status(200).json({ success: true, members: membersWithStatus });
   } catch (error: any) {
     console.error("Get Society Members Error:", error);
     return res.status(500).json({ success: false, message: error.message });

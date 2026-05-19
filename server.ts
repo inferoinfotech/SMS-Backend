@@ -74,6 +74,8 @@ io.on("connection", (socket: any) => {
   // Join a private room for personal messages
   socket.on("join-private", (userId: string) => {
     socket.join(userId);
+    socket.userId = userId;
+    io.emit("user-status-change", { userId, status: "online" });
     console.log(`User ${socket.id} joined private room: ${userId}`);
   });
 
@@ -90,6 +92,17 @@ io.on("connection", (socket: any) => {
       fileType?: string;
     }) => {
       try {
+        let statusValue = "sent";
+        if (data.receiverId) {
+          const receiverRoom = io.sockets.adapter.rooms.get(data.receiverId);
+          const isOnline = receiverRoom && receiverRoom.size > 0;
+          if (isOnline) {
+            statusValue = "delivered";
+          }
+        } else {
+          statusValue = "delivered";
+        }
+
         // Save message to database
         const newMessage = await Chat.create({
           sender: data.senderId,
@@ -99,6 +112,7 @@ io.on("connection", (socket: any) => {
           tempId: data.tempId || null,
           fileUrl: data.fileUrl || null,
           fileType: data.fileType || null,
+          status: statusValue
         });
 
         // Populate sender info for the frontend
@@ -120,6 +134,26 @@ io.on("connection", (socket: any) => {
       }
     },
   );
+
+  // Mark messages as read
+  socket.on("mark-read", async (data: { messageIds: string[]; senderId: string; receiverId: string }) => {
+    try {
+      if (!data.messageIds || data.messageIds.length === 0) return;
+      
+      await Chat.updateMany(
+        { _id: { $in: data.messageIds } },
+        { $set: { status: "read" } }
+      );
+
+      // Emit read receipt back to the sender
+      io.to(data.senderId).emit("messages-read", {
+        messageIds: data.messageIds,
+        receiverId: data.receiverId
+      });
+    } catch (error) {
+      console.error("Socket Mark Read Error:", error);
+    }
+  });
 
   // Typing Indicators
   socket.on("typing", (data: { societyId: string; senderId: string; receiverId?: string }) => {
@@ -150,6 +184,13 @@ io.on("connection", (socket: any) => {
   });
 
   socket.on("disconnect", () => {
+    if (socket.userId) {
+      const userRoom = io.sockets.adapter.rooms.get(socket.userId);
+      const stillOnline = userRoom && userRoom.size > 0;
+      if (!stillOnline) {
+        io.emit("user-status-change", { userId: socket.userId, status: "offline" });
+      }
+    }
     console.log(`User disconnected: ${socket.id}`);
   });
 });
