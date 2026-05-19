@@ -2,6 +2,44 @@ const Income = require("../models/income.model");
 const Auth = require("../models/auth.model");
 const Society = require("../models/society.model");
 
+const createDBNotifications = async (societyId: any, title: string, message: string, type: string) => {
+  try {
+    const Notification = require("../models/notification.model");
+
+    if (!societyId) return;
+
+    // Find the society name to map selectSociety for admins
+    const societyDoc = await Society.findById(societyId);
+    const societyName = societyDoc ? societyDoc.societyName : null;
+
+    const query: any = {
+      $or: [
+        { society: societyId }
+      ]
+    };
+    if (societyName) {
+      query.$or.push({ selectSociety: { $in: [societyName] } });
+    }
+
+    const users = await Auth.find(query);
+
+    const notificationsToCreate = users.map((user: any) => ({
+      userId: user._id,
+      title,
+      message,
+      type,
+      society: societyId,
+      status: "unread",
+    }));
+
+    if (notificationsToCreate.length > 0) {
+      await Notification.insertMany(notificationsToCreate);
+    }
+  } catch (error) {
+    console.error("Error creating database notifications:", error);
+  }
+};
+
 const addIncome = async (req: any, res: any) => {
   try {
     const { title, amount, date, dueDate, description, society } = req.body;
@@ -24,6 +62,13 @@ const addIncome = async (req: any, res: any) => {
       message: `New income entry "${income.title}" of ₹${income.amount} added.`,
       type: "success",
     });
+
+    await createDBNotifications(
+      society,
+      "New Income",
+      `New income entry "${income.title}" of ₹${income.amount} added.`,
+      "success"
+    );
 
     return res.status(201).json({
       message: "Income added successfully",
@@ -65,6 +110,13 @@ const editIncome = async (req: any, res: any) => {
       type: "info",
     });
 
+    await createDBNotifications(
+      income.society,
+      "Income Updated",
+      `Income entry "${income.title}" has been updated.`,
+      "info"
+    );
+
     return res.status(200).json({
       message: "Income updated successfully",
       data: income,
@@ -91,6 +143,13 @@ const deleteIncome = async (req: any, res: any) => {
       message: `Income entry "${income.title}" has been removed.`,
       type: "warning",
     });
+
+    await createDBNotifications(
+      income.society,
+      "Income Deleted",
+      `Income entry "${income.title}" has been removed.`,
+      "warning"
+    );
 
     return res.status(200).json({
       message: "Income deleted successfully",

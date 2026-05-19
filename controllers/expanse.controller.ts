@@ -1,5 +1,45 @@
 const Expanse = require("../models/expanse.model");
 
+const createDBNotifications = async (societyId: any, title: string, message: string, type: string) => {
+  try {
+    const Notification = require("../models/notification.model");
+    const Auth = require("../models/auth.model");
+    const Society = require("../models/society.model");
+
+    if (!societyId) return;
+
+    // Find the society name to map selectSociety for admins
+    const societyDoc = await Society.findById(societyId);
+    const societyName = societyDoc ? societyDoc.societyName : null;
+
+    const query: any = {
+      $or: [
+        { society: societyId }
+      ]
+    };
+    if (societyName) {
+      query.$or.push({ selectSociety: { $in: [societyName] } });
+    }
+
+    const users = await Auth.find(query);
+
+    const notificationsToCreate = users.map((user: any) => ({
+      userId: user._id,
+      title,
+      message,
+      type,
+      society: societyId,
+      status: "unread",
+    }));
+
+    if (notificationsToCreate.length > 0) {
+      await Notification.insertMany(notificationsToCreate);
+    }
+  } catch (error) {
+    console.error("Error creating database notifications:", error);
+  }
+};
+
 const addExpanse = async (req: any, res: any) => {
   try {
     const { title, amount, date, description, society } = req.body;
@@ -22,6 +62,13 @@ const addExpanse = async (req: any, res: any) => {
       message: `A new expense "${expanse.title}" of ₹${expanse.amount} has been added.`,
       type: "success",
     });
+
+    await createDBNotifications(
+      society,
+      "New Expense",
+      `A new expense "${expanse.title}" of ₹${expanse.amount} has been added.`,
+      "success"
+    );
 
     return res.status(201).json({
       message: "Expanse added successfully",
@@ -74,6 +121,13 @@ const editExpanse = async (req: any, res: any) => {
       type: "info",
     });
 
+    await createDBNotifications(
+      expanse.society,
+      "Expense Updated",
+      `Expense "${expanse.title}" has been updated.`,
+      "info"
+    );
+
     return res.status(200).json({
       message: "Expense updated successfully",
       data: expanse,
@@ -107,6 +161,13 @@ const deleteExpanse = async (req: any, res: any) => {
       message: `Expense "${expanse.title}" has been removed.`,
       type: "warning",
     });
+
+    await createDBNotifications(
+      expanse.society,
+      "Expense Deleted",
+      `Expense "${expanse.title}" has been removed.`,
+      "warning"
+    );
 
     return res.status(200).json({
       message: "Expense deleted successfully",
