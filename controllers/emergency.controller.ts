@@ -3,6 +3,7 @@ const Auth = require("../models/auth.model");
 require("dotenv").config();
 const transporter = require("../utils/nodemailer/transporter");
 const Society = require("../models/society.model");
+const Notification = require("../models/notification.model");
 
 const createEmergency = async function (req: any, res: any) {
   try {
@@ -34,11 +35,41 @@ const createEmergency = async function (req: any, res: any) {
       society: targetSociety,
     });
 
+    // Create persistent notifications for all users in this society
+    const users = await Auth.find({
+      $or: [
+        { society: targetSociety },
+        { selectSociety: { $in: [targetSociety] } }, // Handle admins managing multiple societies if needed
+      ],
+    });
+
+    // We also need the society name if selectSociety uses names
+    const societyDoc = await Society.findById(targetSociety);
+
+    const targetUsers = await Auth.find({
+      $or: [
+        { society: targetSociety },
+        { selectSociety: societyDoc?.societyName },
+      ],
+    });
+
+    const notificationPromises = targetUsers.map((user: any) =>
+      Notification.create({
+        userId: user._id,
+        title: "Emergency Alert",
+        message: `Emergency: ${alertType}. ${description}`,
+        type: "error",
+        society: targetSociety,
+      }),
+    );
+
+    await Promise.all(notificationPromises);
+
     const io = req.app.get("io");
-    io.emit("notification", {
-      title: "New Emergency",
-      message: `A new emergency "${emergency.alertType}" has been added.`,
-      type: "success",
+    io.to(targetSociety.toString()).emit("notification", {
+      title: " Alert",
+      message: `${alertType}. ${description}`,
+      type: "error",
     });
 
     return res
