@@ -63,6 +63,7 @@ const io = new Server(server, {
   },
 });
 
+app.set("trust proxy", 1);
 app.set("io", io);
 
 io.on("connection", (socket: any) => {

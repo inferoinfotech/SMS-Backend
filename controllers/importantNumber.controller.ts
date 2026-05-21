@@ -33,7 +33,7 @@ const getAllImportantNumber = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
     const { societyId } = req.query;
-    
+
     let query: any = {};
 
     if (role === "admin") {
@@ -41,7 +41,11 @@ const getAllImportantNumber = async (req: any, res: any) => {
         query.society = societyId;
       } else {
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ importantNumber: [] });
         }
         const societies = await Society.find({
@@ -53,12 +57,16 @@ const getAllImportantNumber = async (req: any, res: any) => {
     } else if (role === "resident") {
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const importantNumber = await ImportantNumber.find(query).sort({ createdAt: -1 });
+    const importantNumber = await ImportantNumber.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     res.status(200).json({ importantNumber });
   } catch (error: any) {
     console.log(error);

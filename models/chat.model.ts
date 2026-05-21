@@ -14,7 +14,9 @@ const ChatSchema = new mongoose.Schema(
     },
     message: {
       type: String,
-      required: function (this: any) { return !this.fileUrl; },
+      required: function (this: any) {
+        return !this.fileUrl;
+      },
       trim: true,
     },
     fileUrl: {
@@ -35,15 +37,24 @@ const ChatSchema = new mongoose.Schema(
     },
     tempId: {
       type: String,
-      default: null
+      default: null,
     },
     status: {
       type: String,
       enum: ["sent", "delivered", "read"],
-      default: "sent"
-    }
+      default: "sent",
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (doc: any, ret: any) => {
+        delete ret.__v;
+        delete ret.updatedAt;
+        return ret;
+      },
+    },
+  },
 );
 
 module.exports = mongoose.model("Chat", ChatSchema);

@@ -16,7 +16,16 @@ const emergencySchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (doc: any, ret: any) => {
+        delete ret.__v;
+        delete ret.updatedAt;
+        return ret;
+      },
+    },
+  },
 );
 
 const Emergency = mongoose.model("Emergency", emergencySchema);

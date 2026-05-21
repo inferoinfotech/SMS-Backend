@@ -61,7 +61,11 @@ const authSchema = new mongoose.Schema(
     wing: { type: String },
     unit: { type: String },
     residentStatus: { type: String, enum: ["Owner", "Tenant"] },
-    unitStatus: { type: String, enum: ["Vacant", "Occupied"], default: "Occupied" },
+    unitStatus: {
+      type: String,
+      enum: ["Vacant", "Occupied"],
+      default: "Occupied",
+    },
     age: { type: Number },
     gender: { type: String, enum: ["male", "female", "other"] },
     relation: { type: String },
@@ -76,14 +80,14 @@ const authSchema = new mongoose.Schema(
     members: [memberSchema],
     vehicles: [
       {
-        vehicleType: { type: String, enum: ["Car", "Bike", "Scooter", "Other"] },
+        vehicleType: {
+          type: String,
+          enum: ["Car", "Bike", "Scooter", "Other"],
+        },
         vehicleName: String,
         vehicleNumber: String,
       },
     ],
-
-
-
 
     // Guard Specific
     shift: { type: String, enum: ["Day", "Night"] },
@@ -112,7 +116,19 @@ const authSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (doc: any, ret: any) => {
+        delete ret.password;
+        delete ret.__v;
+        delete ret.resetOtp;
+        delete ret.otpExpires;
+        delete ret.updatedAt;
+        return ret;
+      },
+    },
+  },
 );
 
 module.exports = mongoose.model("Auth", authSchema);

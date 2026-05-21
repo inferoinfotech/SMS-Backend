@@ -31,7 +31,9 @@ const createEventPayment = async (req: any, res: any) => {
       data: newPayment,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -60,13 +62,19 @@ const getEventPayments = async (req: any, res: any) => {
     }
 
     const payments = await EventPayment.find(query)
-      .populate("resident")
-      .populate("event")
+      .populate(
+        "resident",
+        "name firstname lastname profileImage wing unit phoneNumber",
+      )
+      .populate("event", "title date time location")
+      .select("-__v -updatedAt -society")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ data: payments });
   } catch (error: any) {
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 

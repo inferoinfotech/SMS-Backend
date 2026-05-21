@@ -2,7 +2,15 @@ const Announcement = require("../models/announcement.model");
 
 const createAnnouncement = async function (req: any, res: any) {
   try {
-    const { title, description, announcementType, date, time, society, amount } = req.body;
+    const {
+      title,
+      description,
+      announcementType,
+      date,
+      time,
+      society,
+      amount,
+    } = req.body;
     if (!title || !description || !announcementType || !society) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -13,7 +21,7 @@ const createAnnouncement = async function (req: any, res: any) {
       date,
       time,
       society,
-      amount
+      amount,
     });
     const io = req.app.get("io");
     io.emit("notification", {
@@ -23,24 +31,29 @@ const createAnnouncement = async function (req: any, res: any) {
     });
 
     res.status(201).json({ announcement });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
-    }
-}
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
-const editAnnouncement = async function(req:any, res:any) {
-    try {
-        const id = req.params.id;
-        const { title, description, announcementType, date, time, amount } = req.body;
-        const announcement = await Announcement.findByIdAndUpdate(id, {
-            title,
-            description,
-            announcementType,
-            date,
-            time,
-            amount
-        }, { new: true });
+const editAnnouncement = async function (req: any, res: any) {
+  try {
+    const id = req.params.id;
+    const { title, description, announcementType, date, time, amount } =
+      req.body;
+    const announcement = await Announcement.findByIdAndUpdate(
+      id,
+      {
+        title,
+        description,
+        announcementType,
+        date,
+        time,
+        amount,
+      },
+      { new: true },
+    );
     const io = req.app.get("io");
     io.emit("notification", {
       title: "Announcement Updated",
@@ -49,11 +62,11 @@ const editAnnouncement = async function(req:any, res:any) {
     });
 
     res.status(200).json({ announcement });
-    } catch (error:any) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
-    }
-}
+  } catch (error: any) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 const deleteAnnouncement = async function (req: any, res: any) {
   try {
@@ -87,7 +100,11 @@ const getAllAnnouncement = async function (req: any, res: any) {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ announcement: [] });
         }
         const societies = await Society.find({
@@ -100,12 +117,16 @@ const getAllAnnouncement = async function (req: any, res: any) {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const announcement = await Announcement.find(query).sort({ createdAt: -1 });
+    const announcement = await Announcement.find(query)
+      .select("-__v -updatedAt")
+      .sort({ createdAt: -1 });
     res.status(200).json({ announcement });
   } catch (error: any) {
     console.log(error);
@@ -114,8 +135,8 @@ const getAllAnnouncement = async function (req: any, res: any) {
 };
 
 module.exports = {
-    createAnnouncement,
-    editAnnouncement,
-    deleteAnnouncement,
-    getAllAnnouncement,
+  createAnnouncement,
+  editAnnouncement,
+  deleteAnnouncement,
+  getAllAnnouncement,
 };

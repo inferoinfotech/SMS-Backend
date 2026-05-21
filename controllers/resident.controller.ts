@@ -57,12 +57,10 @@ const createResident = async (req: any, res: any) => {
 
     // Always handle as Occupied since Vacant is handled by editStatusResident
     if (unitStatus !== "Occupied") {
-      return res
-        .status(400)
-        .json({
-          message:
-            "createResident only supports 'Occupied' status. Use editStatusResident to vacate.",
-        });
+      return res.status(400).json({
+        message:
+          "createResident only supports 'Occupied' status. Use editStatusResident to vacate.",
+      });
     }
 
     if (!name || !phoneNumber || !residentStatus) {
@@ -189,16 +187,23 @@ const createResident = async (req: any, res: any) => {
         expiresIn: "1d",
       });
       // Send email asynchronously without blocking the response
-      transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "Welcome to SMS",
-        html: `<p>Welcome to SMS.</p><p>Click on the link below to create your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
-      }).then((info: any) => {
-        logger.info(`Welcome email sent to resident ${email}: ${info.response}`);
-      }).catch((err: any) => {
-        logger.error(`Failed to send welcome email to resident ${email}: ${err.message}`);
-      });
+      transporter
+        .sendMail({
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: "Welcome to SMS",
+          html: `<p>Welcome to SMS.</p><p>Click on the link below to create your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+        })
+        .then((info: any) => {
+          logger.info(
+            `Welcome email sent to resident ${email}: ${info.response}`,
+          );
+        })
+        .catch((err: any) => {
+          logger.error(
+            `Failed to send welcome email to resident ${email}: ${err.message}`,
+          );
+        });
     }
 
     const io = req.app.get("io");
@@ -219,12 +224,16 @@ const createResident = async (req: any, res: any) => {
   } catch (error: any) {
     console.error(error);
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message,
+      );
       return res.status(400).json({ message: messages.join(", ") });
     }
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(400).json({ message: `A resident with this ${field} already exists.` });
+      return res
+        .status(400)
+        .json({ message: `A resident with this ${field} already exists.` });
     }
     return res.status(500).json({
       message: error.message || "Internal server error",
@@ -240,11 +249,9 @@ const editStatusResident = async (req: any, res: any) => {
     // but we can keep the validation if you want to ensure the frontend is sending them.
     const { wing, unit, society } = req.body;
     if (!wing || !unit || !society) {
-      return res
-        .status(400)
-        .json({
-          message: "Wing, unit and society are required to confirm vacancy",
-        });
+      return res.status(400).json({
+        message: "Wing, unit and society are required to confirm vacancy",
+      });
     }
 
     const resident = await Auth.findByIdAndUpdate(
@@ -325,7 +332,9 @@ const getAllResidents = async (req: any, res: any) => {
       query._id = id;
     }
 
-    const residents = await Auth.find(query).populate("society");
+    const residents = await Auth.find(query)
+      .populate("society")
+      .select("-password -__v -resetOtp -otpExpires -updatedAt");
     console.log(residents, "residents");
     return res.status(200).json(residents);
   } catch (error: any) {
@@ -459,16 +468,23 @@ const editResident = async (req: any, res: any) => {
         expiresIn: "1d",
       });
       // Send email asynchronously without blocking the response
-      transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: sanitizedEmail,
-        subject: "Update your password for SMS",
-        html: `<p>Your email has been updated. Click on the link below to set your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
-      }).then((info: any) => {
-        logger.info(`Update password email sent to resident ${sanitizedEmail}: ${info.response}`);
-      }).catch((err: any) => {
-        logger.error(`Failed to send update password email to resident ${sanitizedEmail}: ${err.message}`);
-      });
+      transporter
+        .sendMail({
+          from: process.env.EMAIL_USER,
+          to: sanitizedEmail,
+          subject: "Update your password for SMS",
+          html: `<p>Your email has been updated. Click on the link below to set your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+        })
+        .then((info: any) => {
+          logger.info(
+            `Update password email sent to resident ${sanitizedEmail}: ${info.response}`,
+          );
+        })
+        .catch((err: any) => {
+          logger.error(
+            `Failed to send update password email to resident ${sanitizedEmail}: ${err.message}`,
+          );
+        });
     }
 
     const resident = await Auth.findByIdAndUpdate(
@@ -520,12 +536,16 @@ const editResident = async (req: any, res: any) => {
   } catch (error: any) {
     logger.error(error);
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message,
+      );
       return res.status(400).json({ message: messages.join(", ") });
     }
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(400).json({ message: `A resident with this ${field} already exists.` });
+      return res
+        .status(400)
+        .json({ message: `A resident with this ${field} already exists.` });
     }
     res.status(500).json({ message: error.message || "Internal server error" });
   }

@@ -95,12 +95,10 @@ const login = async (req: any, res: any) => {
     }
 
     if (!user.password) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Password not set. Please check your email for the setup link.",
-        });
+      return res.status(400).json({
+        message:
+          "Password not set. Please check your email for the setup link.",
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -116,9 +114,9 @@ const login = async (req: any, res: any) => {
     );
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: true, // Required for cross-site cookies
       maxAge: 1000 * 60 * 60,
-      sameSite: "lax",
+      sameSite: "none", // Required for cross-site cookies
     });
     res
       .status(200)
@@ -278,17 +276,17 @@ const getProfile = async (req: any, res: any) => {
       user = await Auth.findById(id).select(
         "-password -confirmPassword -resetOtp -otpExpires -__v",
       );
-      
+
       if (user && user.selectSociety && user.selectSociety.length > 0) {
         // Fetch full society details including IDs
         const societies = await Society.find({
-          societyName: { $in: user.selectSociety }
+          societyName: { $in: user.selectSociety },
         });
-        
+
         // We convert to JSON and add the societies array
         const userObj = user.toObject();
         userObj.societies = societies;
-        
+
         return res.status(200).json({
           message: "User profile fetched successfully",
           user: userObj,

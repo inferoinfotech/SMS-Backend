@@ -65,22 +65,29 @@ const createSecurityGuard = async function (req: any, res: any) {
       expiresIn: "1d",
     });
     // Send email asynchronously without blocking the response
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Setup Your Password",
-      html: `
+    transporter
+      .sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Setup Your Password",
+        html: `
     <h2>Welcome</h2>
     <p>Click below to set your password:</p>
     <a href="${process.env.FRONTEND_URL}/security-guard/create-password/${token}">
       Set Password
     </a>
   `,
-    }).then((info: any) => {
-      console.log(`Security guard password setup email sent successfully to ${email}: ${info.response}`);
-    }).catch((err: any) => {
-      console.error(`Failed to send security guard setup email to ${email}: ${err.message}`);
-    });
+      })
+      .then((info: any) => {
+        console.log(
+          `Security guard password setup email sent successfully to ${email}: ${info.response}`,
+        );
+      })
+      .catch((err: any) => {
+        console.error(
+          `Failed to send security guard setup email to ${email}: ${err.message}`,
+        );
+      });
     const setuplink = `${process.env.FRONTEND_URL}/security-guard/create-password/${token}`;
 
     // await client.messages.create({
@@ -197,7 +204,9 @@ const getAllSecurityGuard = async function (req: any, res: any) {
       query.society = resident.society;
     }
 
-    const securityGuard = await Auth.find(query).sort({ createdAt: -1 });
+    const securityGuard = await Auth.find(query)
+      .select("-password -__v -resetOtp -otpExpires -updatedAt")
+      .sort({ createdAt: -1 });
     res.status(200).json({ securityGuard });
   } catch (error: any) {
     console.log(error);

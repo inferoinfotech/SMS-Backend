@@ -117,7 +117,9 @@ const getEmergency = async function (req: any, res: any) {
       query.society = resident.society;
     }
 
-    const emergency = await Emergency.find(query).sort({ createdAt: -1 });
+    const emergency = await Emergency.find(query)
+      .select("-__v -updatedAt")
+      .sort({ createdAt: -1 });
     return res.status(200).json({ emergency });
   } catch (error: any) {
     console.log(error);

@@ -9,8 +9,8 @@ const createComplain = async (req: any, res: any) => {
       complainName,
       description,
       status,
-      priority, 
-      society
+      priority,
+      society,
     } = req.body;
 
     if (
@@ -52,7 +52,15 @@ const createComplain = async (req: any, res: any) => {
 const editComplain = async (req: any, res: any) => {
   try {
     const id = req.params.id;
-    const { compainerName, wing, unit, complainName, description, status, priority } = req.body;
+    const {
+      compainerName,
+      wing,
+      unit,
+      complainName,
+      description,
+      status,
+      priority,
+    } = req.body;
 
     const updateComplain = await Complain.findByIdAndUpdate(
       id,
@@ -119,7 +127,11 @@ const getAllComplain = async (req: any, res: any) => {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ complainList: [] });
         }
         const societies = await Society.find({
@@ -132,12 +144,16 @@ const getAllComplain = async (req: any, res: any) => {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const complainList = await Complain.find(query).sort({ createdAt: -1 });
+    const complainList = await Complain.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     res.status(200).json({ complainList });
   } catch (error: any) {
     console.log(error);
@@ -145,5 +161,9 @@ const getAllComplain = async (req: any, res: any) => {
   }
 };
 
-
-module.exports = { createComplain , editComplain , deleteComplain , getAllComplain};
+module.exports = {
+  createComplain,
+  editComplain,
+  deleteComplain,
+  getAllComplain,
+};

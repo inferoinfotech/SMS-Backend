@@ -2,8 +2,16 @@ const RequestTracking = require("../models/requestTracking.model");
 
 const createRequestTracking = async function name(req: any, res: any) {
   try {
-    const { requesterName, requestName, wing, unit, description, status, priority,society } =
-      req.body;
+    const {
+      requesterName,
+      requestName,
+      wing,
+      unit,
+      description,
+      status,
+      priority,
+      society,
+    } = req.body;
 
     if (
       !requesterName ||
@@ -26,7 +34,6 @@ const createRequestTracking = async function name(req: any, res: any) {
       status,
       priority,
       society,
-
     });
 
     const io = req.app.get("io");
@@ -46,7 +53,15 @@ const createRequestTracking = async function name(req: any, res: any) {
 const editRequestTracking = async function name(req: any, res: any) {
   try {
     const id = req.params.id;
-    const { requesterName, requestName, wing, unit, description, status, priority } = req.body;
+    const {
+      requesterName,
+      requestName,
+      wing,
+      unit,
+      description,
+      status,
+      priority,
+    } = req.body;
 
     const updateRequestTracking = await RequestTracking.findByIdAndUpdate(
       id,
@@ -114,7 +129,11 @@ const getAllRequestTracking = async (req: any, res: any) => {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ requestTrackingList: [] });
         }
         const societies = await Society.find({
@@ -127,12 +146,16 @@ const getAllRequestTracking = async (req: any, res: any) => {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const requestTrackingList = await RequestTracking.find(query).sort({ createdAt: -1 });
+    const requestTrackingList = await RequestTracking.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     res.status(200).json({ requestTrackingList });
   } catch (error: any) {
     console.log(error);

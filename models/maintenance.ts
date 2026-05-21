@@ -47,7 +47,7 @@ const MaintenanceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Paid", "Pending","Due"],
+      enum: ["Paid", "Pending", "Due"],
       default: "Pending",
     },
     payment: {
@@ -65,6 +65,13 @@ const MaintenanceSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (doc: any, ret: any) => {
+        delete ret.__v;
+        delete ret.updatedAt;
+        return ret;
+      },
+    },
   },
 );
 

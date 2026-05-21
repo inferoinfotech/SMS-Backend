@@ -14,6 +14,7 @@ const getChatHistory = async (req: any, res: any) => {
 
     const messages = await Chat.find({ society: societyId, receiver: null })
       .populate("sender", "name firstname lastname profileImage")
+      .select("-__v -updatedAt -society")
       .sort({ createdAt: 1 })
       .limit(100);
 
@@ -44,6 +45,7 @@ const getPersonalChatHistory = async (req: any, res: any) => {
     })
       .populate("sender", "name firstname lastname profileImage")
       .populate("receiver", "name firstname lastname profileImage")
+      .select("-__v -updatedAt -society")
       .sort({ createdAt: 1 });
 
     return res.status(200).json({ success: true, messages });

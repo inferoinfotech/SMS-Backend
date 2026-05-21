@@ -1,6 +1,11 @@
 const Expanse = require("../models/expanse.model");
 
-const createDBNotifications = async (societyId: any, title: string, message: string, type: string) => {
+const createDBNotifications = async (
+  societyId: any,
+  title: string,
+  message: string,
+  type: string,
+) => {
   try {
     const Notification = require("../models/notification.model");
     const Auth = require("../models/auth.model");
@@ -13,9 +18,7 @@ const createDBNotifications = async (societyId: any, title: string, message: str
     const societyName = societyDoc ? societyDoc.societyName : null;
 
     const query: any = {
-      $or: [
-        { society: societyId }
-      ]
+      $or: [{ society: societyId }],
     };
     if (societyName) {
       query.$or.push({ selectSociety: { $in: [societyName] } });
@@ -67,7 +70,7 @@ const addExpanse = async (req: any, res: any) => {
       society,
       "New Expense",
       `A new expense "${expanse.title}" of ₹${expanse.amount} has been added.`,
-      "success"
+      "success",
     );
 
     return res.status(201).json({
@@ -77,7 +80,9 @@ const addExpanse = async (req: any, res: any) => {
   } catch (error: any) {
     console.error(error);
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message,
+      );
       return res.status(400).json({ message: messages.join(", ") });
     }
     return res
@@ -125,7 +130,7 @@ const editExpanse = async (req: any, res: any) => {
       expanse.society,
       "Expense Updated",
       `Expense "${expanse.title}" has been updated.`,
-      "info"
+      "info",
     );
 
     return res.status(200).json({
@@ -135,7 +140,9 @@ const editExpanse = async (req: any, res: any) => {
   } catch (error: any) {
     console.log(error);
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err: any) => err.message);
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message,
+      );
       return res.status(400).json({ message: messages.join(", ") });
     }
     return res.status(500).json({
@@ -166,7 +173,7 @@ const deleteExpanse = async (req: any, res: any) => {
       expanse.society,
       "Expense Deleted",
       `Expense "${expanse.title}" has been removed.`,
-      "warning"
+      "warning",
     );
 
     return res.status(200).json({
@@ -195,7 +202,11 @@ const getExpanse = async (req: any, res: any) => {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ data: [] });
         }
         const societies = await Society.find({
@@ -208,12 +219,16 @@ const getExpanse = async (req: any, res: any) => {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const expanse = await Expanse.find(query).sort({ createdAt: -1 });
+    const expanse = await Expanse.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Expense fetched successfully",
       data: expanse,

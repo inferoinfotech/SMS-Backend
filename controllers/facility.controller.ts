@@ -2,8 +2,15 @@ const Facility = require("../models/facility.model");
 
 const addFacility = async (req: any, res: any) => {
   try {
-    const { name, description, scheduleServiceDate, remindBefore, society } = req.body;
-    if (!name || !description || !scheduleServiceDate || !remindBefore || !society) {
+    const { name, description, scheduleServiceDate, remindBefore, society } =
+      req.body;
+    if (
+      !name ||
+      !description ||
+      !scheduleServiceDate ||
+      !remindBefore ||
+      !society
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
     const facility = await Facility.create({
@@ -27,7 +34,9 @@ const addFacility = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -62,7 +71,9 @@ const editFacility = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -87,7 +98,9 @@ const deleteFacility = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -104,7 +117,11 @@ const getFacility = async (req: any, res: any) => {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ data: [] });
         }
         const societies = await Society.find({
@@ -117,19 +134,25 @@ const getFacility = async (req: any, res: any) => {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const facility = await Facility.find(query).sort({ createdAt: -1 });
+    const facility = await Facility.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Facility fetched successfully",
       data: facility,
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 

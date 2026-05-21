@@ -2,7 +2,12 @@ const Income = require("../models/income.model");
 const Auth = require("../models/auth.model");
 const Society = require("../models/society.model");
 
-const createDBNotifications = async (societyId: any, title: string, message: string, type: string) => {
+const createDBNotifications = async (
+  societyId: any,
+  title: string,
+  message: string,
+  type: string,
+) => {
   try {
     const Notification = require("../models/notification.model");
 
@@ -13,9 +18,7 @@ const createDBNotifications = async (societyId: any, title: string, message: str
     const societyName = societyDoc ? societyDoc.societyName : null;
 
     const query: any = {
-      $or: [
-        { society: societyId }
-      ]
+      $or: [{ society: societyId }],
     };
     if (societyName) {
       query.$or.push({ selectSociety: { $in: [societyName] } });
@@ -67,7 +70,7 @@ const addIncome = async (req: any, res: any) => {
       society,
       "New Income",
       `New income entry "${income.title}" of ₹${income.amount} added.`,
-      "success"
+      "success",
     );
 
     return res.status(201).json({
@@ -114,7 +117,7 @@ const editIncome = async (req: any, res: any) => {
       income.society,
       "Income Updated",
       `Income entry "${income.title}" has been updated.`,
-      "info"
+      "info",
     );
 
     return res.status(200).json({
@@ -148,7 +151,7 @@ const deleteIncome = async (req: any, res: any) => {
       income.society,
       "Income Deleted",
       `Income entry "${income.title}" has been removed.`,
-      "warning"
+      "warning",
     );
 
     return res.status(200).json({
@@ -192,7 +195,9 @@ const getIncome = async (req: any, res: any) => {
         }
       }
     }
-    const income = await Income.find(query).sort({ createdAt: -1 });
+    const income = await Income.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Income fetched successfully",
       data: income,

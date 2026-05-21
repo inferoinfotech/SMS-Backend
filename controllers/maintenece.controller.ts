@@ -27,12 +27,28 @@ const maintenanceSetup = async (req: any, res: any) => {
     // 1. Create or update the maintenance setup for this society
     // We try to find if there's already a setup for this society with the same due date (same month/year)
     const dueDate = new Date(maintenanceDueDate);
-    const startOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1, 0, 0, 0, 0);
-    const endOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfMonth = new Date(
+      dueDate.getFullYear(),
+      dueDate.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+    const endOfMonth = new Date(
+      dueDate.getFullYear(),
+      dueDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     let setup = await MaintenanceSetting.findOne({
       society,
-      maintenanceDueDate: { $gte: startOfMonth, $lte: endOfMonth }
+      maintenanceDueDate: { $gte: startOfMonth, $lte: endOfMonth },
     });
 
     if (setup) {
@@ -60,7 +76,7 @@ const maintenanceSetup = async (req: any, res: any) => {
         const existingRecord = await Maintenance.findOne({
           resident: resident._id,
           society: society,
-          date: { $gte: startOfMonth, $lte: endOfMonth }
+          date: { $gte: startOfMonth, $lte: endOfMonth },
         });
 
         const now = new Date();
@@ -88,7 +104,10 @@ const maintenanceSetup = async (req: any, res: any) => {
           return await Maintenance.create({
             resident: resident._id,
             maintenanceSetup: setup._id,
-            name: resident.name || `${resident.firstname} ${resident.lastname}` || "N/A",
+            name:
+              resident.name ||
+              `${resident.firstname} ${resident.lastname}` ||
+              "N/A",
             wing: resident.wing || "N/A",
             unit: resident.unit || "N/A",
             residentStatus: resident.residentStatus || "Tenant",
@@ -107,11 +126,14 @@ const maintenanceSetup = async (req: any, res: any) => {
     }
 
     return res.status(201).json({
-      message: "Maintenance setup and records updated successfully for the society",
+      message:
+        "Maintenance setup and records updated successfully for the society",
       data: setup,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -151,20 +173,25 @@ const createMaintenance = async (req: any, res: any) => {
     }
 
     if (!residentObj.society) {
-      return res.status(400).json({ 
-        message: "This resident is not linked to any society. Please update the resident record first." 
+      return res.status(400).json({
+        message:
+          "This resident is not linked to any society. Please update the resident record first.",
       });
     }
 
     const existingRecord = await Maintenance.findOne({ resident, date });
     if (existingRecord) {
-      return res.status(400).json({ 
-        message: "Maintenance record for this resident and date already exists." 
+      return res.status(400).json({
+        message:
+          "Maintenance record for this resident and date already exists.",
       });
     }
 
-    const rawStatus = residentObj.residentStatus || residentObj.ResidentStatus || "Tenant";
-    const validStatus = ["Owner", "Tenant"].includes(rawStatus) ? rawStatus : "Tenant";
+    const rawStatus =
+      residentObj.residentStatus || residentObj.ResidentStatus || "Tenant";
+    const validStatus = ["Owner", "Tenant"].includes(rawStatus)
+      ? rawStatus
+      : "Tenant";
 
     const now = new Date();
     const dueDate = new Date(date);
@@ -187,7 +214,10 @@ const createMaintenance = async (req: any, res: any) => {
     });
     return res
       .status(201)
-      .json({ message: "Maintenance created successfully", data: newMaintenance });
+      .json({
+        message: "Maintenance created successfully",
+        data: newMaintenance,
+      });
   } catch (error: any) {
     return res
       .status(500)
@@ -210,7 +240,7 @@ const getMaintenance = async (req: any, res: any) => {
   try {
     const { role, id } = req.user;
     const { status } = req.query;
-    
+
     let query: any = {};
 
     if (role === "resident") {
@@ -237,36 +267,40 @@ const getMaintenance = async (req: any, res: any) => {
 
     // Refresh statuses and penalties for unpaid records to ensure they are current
     const now = new Date();
-    
+
     // Efficiently update basic statuses first
     await Maintenance.updateMany(
       { status: "Pending", date: { $lt: now }, ...query },
-      { $set: { status: "Due" } }
+      { $set: { status: "Due" } },
     );
     await Maintenance.updateMany(
       { status: "Due", date: { $gt: now }, ...query },
-      { $set: { status: "Pending" } }
+      { $set: { status: "Pending" } },
     );
 
     // Fetch and dynamically update penalties if needed
     // This part ensures that if the grace period has passed, the penalty is applied.
     const unpaidRecords = await Maintenance.find({
       ...query,
-      status: { $in: ["Pending", "Due"] }
+      status: { $in: ["Pending", "Due"] },
     }).populate("maintenanceSetup");
 
     for (const record of unpaidRecords) {
       if (record.maintenanceSetup) {
         const dueDate = new Date(record.date);
         const penaltyDate = new Date(dueDate);
-        penaltyDate.setDate(penaltyDate.getDate() + record.maintenanceSetup.penaltyAppliedAfterDay);
-        
-        const targetPenalty = now > penaltyDate ? record.maintenanceSetup.penaltyAmount : 0;
-        
+        penaltyDate.setDate(
+          penaltyDate.getDate() +
+            record.maintenanceSetup.penaltyAppliedAfterDay,
+        );
+
+        const targetPenalty =
+          now > penaltyDate ? record.maintenanceSetup.penaltyAmount : 0;
+
         if (record.penalty !== targetPenalty) {
           await Maintenance.updateOne(
             { _id: record._id },
-            { $set: { penalty: targetPenalty } }
+            { $set: { penalty: targetPenalty } },
           );
         }
       }
@@ -277,8 +311,12 @@ const getMaintenance = async (req: any, res: any) => {
     }
 
     const maintenanceRecords = await Maintenance.find(query)
-      .populate("resident")
-      .populate("maintenanceSetup")
+      .populate(
+        "resident",
+        "name firstname lastname profileImage wing unit residentStatus phoneNumber",
+      )
+      .populate("maintenanceSetup", "-__v -updatedAt -society")
+      .select("-__v -updatedAt -society")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ data: maintenanceRecords });
@@ -297,7 +335,7 @@ const updateMaintenanceStatus = async (req: any, res: any) => {
     const maintenance = await Maintenance.findByIdAndUpdate(
       id,
       { status, payment },
-      { new: true }
+      { new: true },
     );
 
     if (!maintenance) {
@@ -309,8 +347,16 @@ const updateMaintenanceStatus = async (req: any, res: any) => {
       data: maintenance,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
-module.exports = { maintenanceSetup, createMaintenance, getMaintenance ,verifyPassword, updateMaintenanceStatus};
+module.exports = {
+  maintenanceSetup,
+  createMaintenance,
+  getMaintenance,
+  verifyPassword,
+  updateMaintenanceStatus,
+};

@@ -1,6 +1,11 @@
 const Note = require("../models/note.model");
 
-const createDBNotifications = async (societyId: any, title: string, message: string, type: string) => {
+const createDBNotifications = async (
+  societyId: any,
+  title: string,
+  message: string,
+  type: string,
+) => {
   try {
     const Notification = require("../models/notification.model");
     const Auth = require("../models/auth.model");
@@ -13,9 +18,7 @@ const createDBNotifications = async (societyId: any, title: string, message: str
     const societyName = societyDoc ? societyDoc.societyName : null;
 
     const query: any = {
-      $or: [
-        { society: societyId }
-      ]
+      $or: [{ society: societyId }],
     };
     if (societyName) {
       query.$or.push({ selectSociety: { $in: [societyName] } });
@@ -64,7 +67,7 @@ const addNote = async (req: any, res: any) => {
       society,
       "New Note",
       `A new note "${note.title}" has been added.`,
-      "success"
+      "success",
     );
 
     return res.status(201).json({
@@ -73,7 +76,9 @@ const addNote = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -105,7 +110,7 @@ const editNote = async (req: any, res: any) => {
       note.society,
       "Note Updated",
       `Note "${note.title}" has been updated.`,
-      "info"
+      "info",
     );
 
     return res.status(200).json({
@@ -114,7 +119,9 @@ const editNote = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -137,7 +144,7 @@ const deleteNote = async (req: any, res: any) => {
       note.society,
       "Note Deleted",
       `Note "${note.title}" has been removed.`,
-      "warning"
+      "warning",
     );
 
     return res.status(200).json({
@@ -146,7 +153,9 @@ const deleteNote = async (req: any, res: any) => {
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
@@ -163,7 +172,11 @@ const getNote = async (req: any, res: any) => {
         const Auth = require("../models/auth.model");
         const Society = require("../models/society.model");
         const admin = await Auth.findById(id);
-        if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
+        if (
+          !admin ||
+          !admin.selectSociety ||
+          admin.selectSociety.length === 0
+        ) {
           return res.status(200).json({ data: [] });
         }
         const societies = await Society.find({
@@ -176,19 +189,25 @@ const getNote = async (req: any, res: any) => {
       const Auth = require("../models/auth.model");
       const resident = await Auth.findById(id);
       if (!resident || !resident.society) {
-        return res.status(404).json({ message: "Society not found for resident" });
+        return res
+          .status(404)
+          .json({ message: "Society not found for resident" });
       }
       query.society = resident.society;
     }
 
-    const note = await Note.find(query).sort({ createdAt: -1 });
+    const note = await Note.find(query)
+      .select("-__v -updatedAt -society")
+      .sort({ createdAt: -1 });
     return res.status(200).json({
       message: "Note fetched successfully",
       data: note,
     });
   } catch (error: any) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error: " + error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error: " + error.message });
   }
 };
 
