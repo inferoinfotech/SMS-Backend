@@ -54,7 +54,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "",
+      "http://localhost:5173",
+      "http://192.168.1.13:5173",
+    ].filter(Boolean),
     credentials: true,
   },
 });
@@ -187,12 +191,10 @@ io.on("connection", (socket: any) => {
           receiverId: data.receiverId,
         });
       } else {
-        socket
-          .to(data.societyId)
-          .emit("user-stop-typing", {
-            senderId: data.senderId,
-            isCommunity: true,
-          });
+        socket.to(data.societyId).emit("user-stop-typing", {
+          senderId: data.senderId,
+          isCommunity: true,
+        });
       }
     },
   );
@@ -267,7 +269,11 @@ io.on("connection", (socket: any) => {
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "",
+      "http://localhost:5173",
+      "http://192.168.1.13:5173",
+    ].filter(Boolean),
     credentials: true,
   }),
 );
