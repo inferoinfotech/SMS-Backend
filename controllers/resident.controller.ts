@@ -188,16 +188,17 @@ const createResident = async (req: any, res: any) => {
       const token = jwt.sign({ id: resident._id }, process.env.JWT_SECRET, {
         expiresIn: "1d",
       });
-      const setupPassword = await transporter.sendMail({
+      // Send email asynchronously without blocking the response
+      transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
         subject: "Welcome to SMS",
         html: `<p>Welcome to SMS.</p><p>Click on the link below to create your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+      }).then((info: any) => {
+        logger.info(`Welcome email sent to resident ${email}: ${info.response}`);
+      }).catch((err: any) => {
+        logger.error(`Failed to send welcome email to resident ${email}: ${err.message}`);
       });
-
-      if (!setupPassword) {
-        console.log("Email not sent");
-      }
     }
 
     const io = req.app.get("io");
@@ -457,16 +458,17 @@ const editResident = async (req: any, res: any) => {
       const token = jwt.sign({ id: oldResident._id }, process.env.JWT_SECRET, {
         expiresIn: "1d",
       });
-      const setupPassword = await transporter.sendMail({
+      // Send email asynchronously without blocking the response
+      transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: sanitizedEmail,
         subject: "Update your password for SMS",
         html: `<p>Your email has been updated. Click on the link below to set your password:</p><a href="${process.env.FRONTEND_URL}/create-password/${token}">${process.env.FRONTEND_URL}/create-password/${token}</a>`,
+      }).then((info: any) => {
+        logger.info(`Update password email sent to resident ${sanitizedEmail}: ${info.response}`);
+      }).catch((err: any) => {
+        logger.error(`Failed to send update password email to resident ${sanitizedEmail}: ${err.message}`);
       });
-
-      if (!setupPassword) {
-        console.log("Email not sent");
-      }
     }
 
     const resident = await Auth.findByIdAndUpdate(

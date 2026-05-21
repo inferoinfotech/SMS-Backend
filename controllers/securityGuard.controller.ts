@@ -64,22 +64,22 @@ const createSecurityGuard = async function (req: any, res: any) {
     const token = jwt.sign({ id: securityGuard._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    await transporter.sendMail({
+    // Send email asynchronously without blocking the response
+    transporter.sendMail({
       from: process.env.EMAIL_USER,
-
       to: email,
-
       subject: "Setup Your Password",
-
       html: `
     <h2>Welcome</h2>
-
     <p>Click below to set your password:</p>
-
     <a href="${process.env.FRONTEND_URL}/security-guard/create-password/${token}">
       Set Password
     </a>
   `,
+    }).then((info: any) => {
+      console.log(`Security guard password setup email sent successfully to ${email}: ${info.response}`);
+    }).catch((err: any) => {
+      console.error(`Failed to send security guard setup email to ${email}: ${err.message}`);
     });
     const setuplink = `${process.env.FRONTEND_URL}/security-guard/create-password/${token}`;
 
