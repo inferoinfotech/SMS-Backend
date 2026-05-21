@@ -89,6 +89,12 @@ const authSchema = new mongoose.Schema(
     shift: { type: String, enum: ["Day", "Night"] },
     shiftDate: { type: Date },
     shiftTime: { type: String },
+    uploadAadhar: {
+      type: String,
+      required: function (this: any) {
+        return this.role === "guard";
+      },
+    },
 
     // System Fields
     isVerified: {
