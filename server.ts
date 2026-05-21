@@ -48,7 +48,6 @@ const notificationRouter = require("./routes/notification.router");
 const videoRouter = require("./routes/video.router");
 const discussionRouter = require("./routes/community-discussion.router");
 
-
 const { Server } = require("socket.io");
 const http = require("http");
 const app = express();
@@ -112,7 +111,7 @@ io.on("connection", (socket: any) => {
           tempId: data.tempId || null,
           fileUrl: data.fileUrl || null,
           fileType: data.fileType || null,
-          status: statusValue
+          status: statusValue,
         });
 
         // Populate sender info for the frontend
@@ -136,59 +135,130 @@ io.on("connection", (socket: any) => {
   );
 
   // Mark messages as read
-  socket.on("mark-read", async (data: { messageIds: string[]; senderId: string; receiverId: string }) => {
-    try {
-      if (!data.messageIds || data.messageIds.length === 0) return;
-      
-      await Chat.updateMany(
-        { _id: { $in: data.messageIds } },
-        { $set: { status: "read" } }
-      );
+  socket.on(
+    "mark-read",
+    async (data: {
+      messageIds: string[];
+      senderId: string;
+      receiverId: string;
+    }) => {
+      try {
+        if (!data.messageIds || data.messageIds.length === 0) return;
 
-      // Emit read receipt back to the sender
-      io.to(data.senderId).emit("messages-read", {
-        messageIds: data.messageIds,
-        receiverId: data.receiverId
-      });
-    } catch (error) {
-      console.error("Socket Mark Read Error:", error);
-    }
-  });
+        await Chat.updateMany(
+          { _id: { $in: data.messageIds } },
+          { $set: { status: "read" } },
+        );
+
+        // Emit read receipt back to the sender
+        io.to(data.senderId).emit("messages-read", {
+          messageIds: data.messageIds,
+          receiverId: data.receiverId,
+        });
+      } catch (error) {
+        console.error("Socket Mark Read Error:", error);
+      }
+    },
+  );
 
   // Typing Indicators
-  socket.on("typing", (data: { societyId: string; senderId: string; receiverId?: string }) => {
-    if (data.receiverId) {
-      io.to(data.receiverId).emit("user-typing", { senderId: data.senderId, receiverId: data.receiverId });
-    } else {
-      socket.to(data.societyId).emit("user-typing", { senderId: data.senderId, isCommunity: true });
-    }
-  });
+  socket.on(
+    "typing",
+    (data: { societyId: string; senderId: string; receiverId?: string }) => {
+      if (data.receiverId) {
+        io.to(data.receiverId).emit("user-typing", {
+          senderId: data.senderId,
+          receiverId: data.receiverId,
+        });
+      } else {
+        socket
+          .to(data.societyId)
+          .emit("user-typing", { senderId: data.senderId, isCommunity: true });
+      }
+    },
+  );
 
-  socket.on("stop-typing", (data: { societyId: string; senderId: string; receiverId?: string }) => {
-    if (data.receiverId) {
-      io.to(data.receiverId).emit("user-stop-typing", { senderId: data.senderId, receiverId: data.receiverId });
-    } else {
-      socket.to(data.societyId).emit("user-stop-typing", { senderId: data.senderId, isCommunity: true });
-    }
-  });
+  socket.on(
+    "stop-typing",
+    (data: { societyId: string; senderId: string; receiverId?: string }) => {
+      if (data.receiverId) {
+        io.to(data.receiverId).emit("user-stop-typing", {
+          senderId: data.senderId,
+          receiverId: data.receiverId,
+        });
+      } else {
+        socket
+          .to(data.societyId)
+          .emit("user-stop-typing", {
+            senderId: data.senderId,
+            isCommunity: true,
+          });
+      }
+    },
+  );
 
   // Video/Audio Calling Signaling
-  socket.on("call:incoming", (data: { to: string; from: string; callId: string; type: string }) => {
-    console.log(`[Socket] Personal call from ${data.from} to ${data.to}: ${data.callId}`);
-    io.to(data.to).emit("call:incoming", data);
-  });
+  socket.on(
+    "call:incoming",
+    (data: { to: string; from: string; callId: string; type: string }) => {
+      console.log(
+        `[Socket] Personal call from ${data.from} to ${data.to}: ${data.callId}`,
+      );
+      io.to(data.to).emit("call:incoming", data);
+    },
+  );
 
-  socket.on("call:community-incoming", (data: { societyId: string; from: string; callId: string; type: string }) => {
-    console.log(`[Socket] Community call from ${data.from} in society ${data.societyId}`);
-    socket.to(data.societyId).emit("call:incoming", data);
-  });
+  socket.on(
+    "call:community-incoming",
+    (data: {
+      societyId: string;
+      from: string;
+      callId: string;
+      type: string;
+    }) => {
+      console.log(
+        `[Socket] Community call from ${data.from} in society ${data.societyId}`,
+      );
+      socket.to(data.societyId).emit("call:incoming", data);
+    },
+  );
+
+  socket.on(
+    "call:rejected",
+    (data: { to: string; from: string; callId: string }) => {
+      console.log(`[Socket] Call rejected by ${data.from} to ${data.to}`);
+      if (data.to) {
+        io.to(data.to).emit("call:rejected", data);
+      }
+    },
+  );
+
+  socket.on(
+    "call:ended",
+    (data: {
+      to: string;
+      societyId?: string;
+      callId: string;
+      isCommunity: boolean;
+    }) => {
+      console.log(`[Socket] Call ended: ${data.callId}`);
+      if (data.isCommunity && data.societyId) {
+        socket.to(data.societyId).emit("call:ended", data);
+      } else if (data.to) {
+        io.to(data.to).emit("call:ended", data);
+      }
+    },
+  );
 
   socket.on("disconnect", () => {
     if (socket.userId) {
       const userRoom = io.sockets.adapter.rooms.get(socket.userId);
       const stillOnline = userRoom && userRoom.size > 0;
       if (!stillOnline) {
-        io.emit("user-status-change", { userId: socket.userId, status: "offline" });
+        io.emit("user-status-change", {
+          userId: socket.userId,
+          status: "offline",
+        });
       }
     }
     console.log(`User disconnected: ${socket.id}`);
@@ -233,7 +303,6 @@ app.use("/api/chat", chatRouter);
 app.use("/api/notification", notificationRouter);
 app.use("/api/video", videoRouter);
 app.use("/api/discussion", discussionRouter);
-
 
 app.use(errorHandler);
 
