@@ -109,14 +109,16 @@ const login = async (req: any, res: any) => {
       { id: user._id, role: user.role, society: user.society },
       process.env.JWT_SECRET,
       {
-        expiresIn: "1h",
+        expiresIn: "1d",
       },
     );
+    const isProduction = process.env.NODE_ENV === "production";
+    
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // Required for cross-site cookies
-      maxAge: 1000 * 60 * 60,
-      sameSite: "none", // Required for cross-site cookies
+      secure: true, // Always true for cross-site work between Vercel and Render
+      maxAge: 1000 * 60 * 60 * 24,
+      sameSite: "none", // Required for cross-site credentials
     });
     res
       .status(200)

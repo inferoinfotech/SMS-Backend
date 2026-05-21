@@ -3,7 +3,10 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const connectDB = require("./config/db");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
+
 const authRouter = require("./routes/auth.router");
 const societyRouter = require("./routes/society.router");
 const residentRouter = require("./routes/resident.router");
@@ -52,30 +55,72 @@ const { Server } = require("socket.io");
 const http = require("http");
 const app = express();
 const server = http.createServer(app);
+
+// Security Middlewares
+app.use(helmet()); // Sets various HTTP headers for security
+app.set("trust proxy", 1); // Required for secure cookies behind proxies (Render/Vercel)
+
+// Rate Limiting: 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests from this IP, please try again after 15 minutes",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limit specifically to auth routes in production
+if (process.env.NODE_ENV === "production") {
+  app.use("/api/auth", limiter);
+}
+
+// CORS Configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "https://sms-frontend-v2.vercel.app",
+]
+  .map((url) => url?.replace(/\/$/, ""))
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // In production, strictly enforce allowed origins
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        callback(null, true);
+      } else {
+        // For development/debugging purposes, we can see why it's failing
+        console.warn(`Blocked by CORS: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  }),
+);
+
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL || "",
-      "http://localhost:5173",
-      "http://192.168.1.13:5173",
-    ].filter(Boolean),
+    origin: allowedOrigins,
     credentials: true,
   },
 });
 
-app.set("trust proxy", 1);
 app.set("io", io);
 
 io.on("connection", (socket: any) => {
   console.log(`User connected: ${socket.id}`);
 
-  // Join a society-specific room
   socket.on("join-room", (societyId: string) => {
     socket.join(societyId);
     console.log(`User ${socket.id} joined room: ${societyId}`);
   });
 
-  // Join a private room for personal messages
   socket.on("join-private", (userId: string) => {
     socket.join(userId);
     socket.userId = userId;
@@ -83,7 +128,6 @@ io.on("connection", (socket: any) => {
     console.log(`User ${socket.id} joined private room: ${userId}`);
   });
 
-  // Handle chat messages (both Community and Personal)
   socket.on(
     "chat-message",
     async (data: {
@@ -107,7 +151,6 @@ io.on("connection", (socket: any) => {
           statusValue = "delivered";
         }
 
-        // Save message to database
         const newMessage = await Chat.create({
           sender: data.senderId,
           society: data.societyId,
@@ -119,18 +162,15 @@ io.on("connection", (socket: any) => {
           status: statusValue,
         });
 
-        // Populate sender info for the frontend
         const populatedMessage = await Chat.findById(newMessage._id)
           .populate("sender", "name firstname lastname profileImage")
           .populate("receiver", "name firstname lastname profileImage");
 
         if (data.receiverId) {
-          // Personal (1-to-1) Message: Emit only to sender and receiver
           io.to(data.receiverId)
             .to(data.senderId)
             .emit("new-message", populatedMessage);
         } else {
-          // Community Forum Message: Broadcast to everyone in the society room
           io.to(data.societyId).emit("new-message", populatedMessage);
         }
       } catch (error) {
@@ -139,7 +179,6 @@ io.on("connection", (socket: any) => {
     },
   );
 
-  // Mark messages as read
   socket.on(
     "mark-read",
     async (data: {
@@ -155,7 +194,6 @@ io.on("connection", (socket: any) => {
           { $set: { status: "read" } },
         );
 
-        // Emit read receipt back to the sender
         io.to(data.senderId).emit("messages-read", {
           messageIds: data.messageIds,
           receiverId: data.receiverId,
@@ -166,7 +204,6 @@ io.on("connection", (socket: any) => {
     },
   );
 
-  // Typing Indicators
   socket.on(
     "typing",
     (data: { societyId: string; senderId: string; receiverId?: string }) => {
@@ -200,13 +237,9 @@ io.on("connection", (socket: any) => {
     },
   );
 
-  // Video/Audio Calling Signaling
   socket.on(
     "call:incoming",
     (data: { to: string; from: string; callId: string; type: string }) => {
-      console.log(
-        `[Socket] Personal call from ${data.from} to ${data.to}: ${data.callId}`,
-      );
       io.to(data.to).emit("call:incoming", data);
     },
   );
@@ -219,9 +252,6 @@ io.on("connection", (socket: any) => {
       callId: string;
       type: string;
     }) => {
-      console.log(
-        `[Socket] Community call from ${data.from} in society ${data.societyId}`,
-      );
       socket.to(data.societyId).emit("call:incoming", data);
     },
   );
@@ -229,7 +259,6 @@ io.on("connection", (socket: any) => {
   socket.on(
     "call:rejected",
     (data: { to: string; from: string; callId: string }) => {
-      console.log(`[Socket] Call rejected by ${data.from} to ${data.to}`);
       if (data.to) {
         io.to(data.to).emit("call:rejected", data);
       }
@@ -244,7 +273,6 @@ io.on("connection", (socket: any) => {
       callId: string;
       isCommunity: boolean;
     }) => {
-      console.log(`[Socket] Call ended: ${data.callId}`);
       if (data.isCommunity && data.societyId) {
         socket.to(data.societyId).emit("call:ended", data);
       } else if (data.to) {
@@ -268,16 +296,6 @@ io.on("connection", (socket: any) => {
   });
 });
 
-app.use(
-  cors({
-    origin: [
-      process.env.FRONTEND_URL || "",
-      "http://localhost:5173",
-      "http://192.168.1.13:5173",
-    ].filter(Boolean),
-    credentials: true,
-  }),
-);
 app.use(pinoHttp);
 app.use(express.json());
 app.use(cookieParser());
@@ -306,7 +324,6 @@ app.use("/api/emergency", emergencyRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/poll", pollRouter);
 app.use("/api/chat", chatRouter);
-
 app.use("/api/notification", notificationRouter);
 app.use("/api/video", videoRouter);
 app.use("/api/discussion", discussionRouter);
