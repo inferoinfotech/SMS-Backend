@@ -7,7 +7,9 @@ const getChatHistory = async (req: any, res: any) => {
     const { societyId } = req.query;
 
     if (!societyId) {
-      return res.status(400).json({ success: false, message: "Society ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Society ID is required" });
     }
 
     const messages = await Chat.find({ society: societyId, receiver: null })
@@ -29,7 +31,9 @@ const getPersonalChatHistory = async (req: any, res: any) => {
     const userId = req.user.id || req.user._id;
 
     if (!otherUserId) {
-      return res.status(400).json({ success: false, message: "Recipient ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Recipient ID is required" });
     }
 
     const messages = await Chat.find({
@@ -56,16 +60,20 @@ const getSocietyMembers = async (req: any, res: any) => {
     const userId = req.user.id || req.user._id;
 
     if (!societyId) {
-      return res.status(400).json({ success: false, message: "Society ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Society ID is required" });
     }
 
     // Find all users in the same society, excluding the current user, guards, and blank users
-    const members = await Auth.find({ 
-      society: societyId, 
+    const members = await Auth.find({
+      society: societyId,
       _id: { $ne: userId },
       role: { $ne: "guard" },
-      firstname: { $exists: true, $ne: "" }
-    }).select("name firstname lastname profileImage role residentStatus wing unit");
+      firstname: { $exists: true, $ne: "" },
+    }).select(
+      "name firstname lastname profileImage role residentStatus wing unit",
+    );
 
     const io = req.app.get("io");
     const membersWithStatus = members.map((m: any) => {
@@ -73,7 +81,7 @@ const getSocietyMembers = async (req: any, res: any) => {
       const isOnline = userRoom && userRoom.size > 0;
       return {
         ...m.toObject(),
-        status: isOnline ? "online" : "offline"
+        status: isOnline ? "online" : "offline",
       };
     });
 
@@ -87,12 +95,21 @@ const getSocietyMembers = async (req: any, res: any) => {
 const uploadFile = async (req: any, res: any) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded" });
     }
 
     let fileType = "image";
     if (req.file.mimetype.includes("pdf")) fileType = "pdf";
-    else if (req.file.mimetype.includes("audio")) fileType = "audio";
+    else if (
+      req.file.mimetype.includes("audio") ||
+      req.file.mimetype.includes("video") ||
+      req.file.originalname.endsWith(".webm") ||
+      req.file.originalname.endsWith(".mp4")
+    ) {
+      fileType = "audio";
+    }
 
     return res.status(200).json({
       success: true,
@@ -105,9 +122,9 @@ const uploadFile = async (req: any, res: any) => {
   }
 };
 
-module.exports = { 
-  getChatHistory, 
-  getPersonalChatHistory, 
+module.exports = {
+  getChatHistory,
+  getPersonalChatHistory,
   getSocietyMembers,
-  uploadFile
+  uploadFile,
 };
