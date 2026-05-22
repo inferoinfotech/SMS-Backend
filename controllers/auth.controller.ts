@@ -75,7 +75,7 @@ const signup = async (req: any, res: any) => {
 const login = async (req: any, res: any) => {
   console.log("req.body", req.body);
   try {
-    const { email, phoneNumber, password } = req.body;
+    const { email, phoneNumber, password, rememberMe = false } = req.body;
     console.log("email, phoneNumber, password", email, phoneNumber, password);
     if ((!email && !phoneNumber) || !password) {
       return res.status(400).json({
@@ -105,19 +105,21 @@ const login = async (req: any, res: any) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+    const tokenMaxAge = rememberMe
+      ? 1000 * 60 * 5
+      : 1000 * 60;
     const token = jwt.sign(
       { id: user._id, role: user.role, society: user.society },
       process.env.JWT_SECRET,
       {
-        expiresIn: "1d",
+        expiresIn: rememberMe ? "5m" : "1m",
       },
     );
-    const isProduction = process.env.NODE_ENV === "production";
-    
+
     res.cookie("token", token, {
       httpOnly: true,
       secure: true, // Always true for cross-site work between Vercel and Render
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: tokenMaxAge,
       sameSite: "none", // Required for cross-site credentials
     });
     res
@@ -131,7 +133,11 @@ const login = async (req: any, res: any) => {
 
 const logout = async (req: any, res: any) => {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     console.log(error);

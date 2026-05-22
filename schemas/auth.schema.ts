@@ -31,6 +31,7 @@ const loginSchema = z
       .min(10, "Phone number must be at least 10 digits")
       .optional(),
     password: z.string().min(1, "Password is required"),
+    rememberMe: z.boolean().optional(),
   })
   .refine((data: any) => data.email || data.phoneNumber, {
     message: "Email or phone number is required",
