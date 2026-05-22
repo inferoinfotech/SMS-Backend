@@ -16,7 +16,7 @@ const getDashboardStats = async (req: any, res: any) => {
       if (societyId) {
         societyQuery = { _id: societyId };
       } else {
-        const admin = await Auth.findById(id);
+        const admin = await Auth.findById(id).select("selectSociety").lean();
         if (!admin || !admin.selectSociety || admin.selectSociety.length === 0) {
           return res.status(200).json({
             totalBalance: 0,
@@ -27,110 +27,113 @@ const getDashboardStats = async (req: any, res: any) => {
         }
         const societies = await Society.find({
           societyName: { $in: admin.selectSociety },
-        });
+        }).select("_id").lean();
         const societyIds = societies.map((s: any) => s._id);
         societyQuery = { _id: { $in: societyIds } };
       }
     } else if (role === "resident") {
-      const resident = await Auth.findById(id);
+      const resident = await Auth.findById(id).select("society").lean();
       if (!resident || !resident.society) {
         return res.status(404).json({ message: "Resident society not found" });
       }
       societyQuery = { _id: resident.society };
     }
 
-    const societies = await Society.find(societyQuery);
+    const societies = await Society.find(societyQuery).select("_id").lean();
     const societyIds = societies.map((s: any) => s._id);
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31);
 
-    // 1. Total Income from Maintenance (Paid only)
-    const maintenanceIncome = await Maintenance.aggregate([
-      { $match: { society: { $in: societyIds }, status: "Paid" } },
-      { $group: { _id: null, total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] } } } },
+    const [
+      maintenanceIncome,
+      eventPayment,
+      otherIncome,
+      totalExpenses,
+      totalUnits,
+      monthlyIncomeData,
+      otherMonthlyIncome,
+      eventMonthlyIncome,
+    ] = await Promise.all([
+      Maintenance.aggregate([
+        { $match: { society: { $in: societyIds }, status: "Paid" } },
+        { $group: { _id: null, total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] } } } },
+      ]),
+      EventPayment.aggregate([
+        { $match: { society: { $in: societyIds }, status: "Paid" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Income.aggregate([
+        { $match: { society: { $in: societyIds } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Expanse.aggregate([
+        { $match: { society: { $in: societyIds } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Auth.countDocuments({
+        society: { $in: societyIds },
+        role: "resident",
+      }),
+      Maintenance.aggregate([
+        {
+          $match: {
+            society: { $in: societyIds },
+            status: "Paid",
+            date: {
+              $gte: yearStart,
+              $lte: yearEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { $month: "$date" },
+            total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] },
+            },
+          },
+        },
+      ]),
+      Income.aggregate([
+        {
+          $match: {
+            society: { $in: societyIds },
+            date: {
+              $gte: yearStart,
+              $lte: yearEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { $month: "$date" },
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
+      EventPayment.aggregate([
+        {
+          $match: {
+            society: { $in: societyIds },
+            status: "Paid",
+            createdAt: {
+              $gte: yearStart,
+              $lte: yearEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            total: { $sum: "$amount" },
+          },
+        },
+      ]),
     ]);
-    const eventPayment = await EventPayment.aggregate([
-      { $match: { society: { $in: societyIds }, status: "Paid" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-
-    // 2. Total Income from other sources
-    const otherIncome = await Income.aggregate([
-      { $match: { society: { $in: societyIds } } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-
-    // 3. Total Expenses
-    const totalExpenses = await Expanse.aggregate([
-      { $match: { society: { $in: societyIds } } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-
-    // 4. Total Units (Count of residents)
-    const totalUnits = await Auth.countDocuments({
-      society: { $in: societyIds },
-      role: "resident",
-    });
 
     const incomeTotal = (maintenanceIncome[0]?.total || 0 ) + (eventPayment[0]?.total || 0) + (otherIncome[0]?.total || 0);
     const expenseTotal = totalExpenses[0]?.total || 0;
     const balanceTotal = incomeTotal - expenseTotal;
-
-    // 5. Monthly Income (for chart)
-    const currentYear = new Date().getFullYear();
-    const monthlyIncomeData = await Maintenance.aggregate([
-      { 
-        $match: { 
-          society: { $in: societyIds }, 
-          status: "Paid",
-          date: { 
-            $gte: new Date(currentYear, 0, 1), 
-            $lte: new Date(currentYear, 11, 31) 
-          } 
-        } 
-      },
-      {
-        $group: {
-          _id: { $month: "$date" },
-          total: { $sum: { $add: ["$amount", { $ifNull: ["$penalty", 0] }] } }
-        }
-      }
-    ]);
-
-    const otherMonthlyIncome = await Income.aggregate([
-      { 
-        $match: { 
-          society: { $in: societyIds },
-          date: { 
-            $gte: new Date(currentYear, 0, 1), 
-            $lte: new Date(currentYear, 11, 31) 
-          } 
-        } 
-      },
-      {
-        $group: {
-          _id: { $month: "$date" },
-          total: { $sum: "$amount" }
-        }
-      }
-    ]);
-
-    const eventMonthlyIncome = await EventPayment.aggregate([
-      { 
-        $match: { 
-          society: { $in: societyIds },
-          status: "Paid",
-          createdAt: { 
-            $gte: new Date(currentYear, 0, 1), 
-            $lte: new Date(currentYear, 11, 31) 
-          } 
-        } 
-      },
-      {
-        $group: {
-          _id: { $month: "$createdAt" },
-          total: { $sum: "$amount" }
-        }
-      }
-    ]);
 
     const monthlyIncome = new Array(12).fill(0);
     monthlyIncomeData.forEach((item: any) => {
