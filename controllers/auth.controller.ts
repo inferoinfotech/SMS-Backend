@@ -106,13 +106,13 @@ const login = async (req: any, res: any) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
     const tokenMaxAge = rememberMe
-      ? 1000 * 60 * 5
-      : 1000 * 60;
+      ? 1000 * 60 * 60 * 24 * 30
+      : 1000 * 60 * 60 * 24;
     const token = jwt.sign(
       { id: user._id, role: user.role, society: user.society },
       process.env.JWT_SECRET,
       {
-        expiresIn: rememberMe ? "5m" : "1m",
+        expiresIn: rememberMe ? "30d" : "1d",
       },
     );
 
